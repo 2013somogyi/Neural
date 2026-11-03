@@ -4,6 +4,37 @@ Este documento apresenta a especificação técnica completa, o modelo relaciona
 
 ---
 
+## Guia de execução por blocos
+
+### Bloco 1 — Banco de dados
+
+O backend usa MySQL, com `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` e `DB_PASSWORD`. Copie `backend/.env.example` para `backend/.env` e ajuste os valores para o banco ativo. O padrão é `127.0.0.1:3306`, banco `NEURAL` e usuário `root`.
+
+### Bloco 2 — API backend
+
+O Express inicia na porta `4000`. A inicialização espera a conexão e a sincronização inicial com MySQL antes de atender requisições. Se não conectar, o processo encerra com uma mensagem para revisar `backend/.env`; ele não inicia em modo de memória. Consulte `http://127.0.0.1:4000/api/health`; `database` deve informar `connected`.
+
+### Bloco 3 — Interface frontend
+
+O Vite inicia na porta `3000`. As chamadas da interface usam `/api`; durante o desenvolvimento, o proxy encaminha essas chamadas para `http://127.0.0.1:4000`. Para alterar o destino, configure `VITE_API_PROXY_TARGET` em `frontend/.env`. Opcionalmente, `VITE_API_URL` define uma URL completa da API para a interface.
+
+### Bloco 4 — Inicialização
+
+Instale as dependências uma vez:
+
+```powershell
+cd backend
+npm install
+cd ..\frontend
+npm install
+```
+
+Na raiz desta pasta, execute `.\start-dev.ps1` para abrir o backend e o frontend em janelas separadas. Também é possível iniciar cada parte manualmente com `npm run dev` dentro de `backend` e `frontend`. Para produção, use `npm start` no backend e `npm run build` no frontend.
+
+O projeto requer Node.js 20.19+ ou 22.12+. O banco `NEURAL` precisa existir e o usuário configurado precisa ter permissão para usar o banco e criar/alterar as tabelas necessárias.
+
+---
+
 ## 1. Visão Geral da Arquitetura
 
 O sistema **N Neural** é uma plataforma de gestão empresarial para assistências técnicas e empresas de serviços. Ele gerencia o fluxo completo desde o cadastro de empresas/planos, abertura e controle de Ordens de Serviço (O.S.), gestão de estoque e peças, fornecedores, equipe de técnicos e faturamento/relatórios.

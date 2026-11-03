@@ -8,6 +8,7 @@ const pecaRoutes = require('./routes/pecaRoutes');
 const fornecedorRoutes = require('./routes/fornecedorRoutes');
 const tecnicoRoutes = require('./routes/tecnicoRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const db = require('./db/database');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -23,7 +24,9 @@ app.use((req, res, next) => {
 });
 
 // Configure CORS
-const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
@@ -38,9 +41,22 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 
+app.use(async (req, res, next) => {
+  try {
+    await db.ready;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Healthcheck
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'N Neural API' });
+  res.json({
+    status: 'ok',
+    service: 'N Neural API',
+    database: db.isMysqlConnected ? 'connected' : 'memory-fallback'
+  });
 });
 
 // Rate Limiting for Auth Endpoints
@@ -70,9 +86,20 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Servidor N Neural executando na porta ${PORT}`);
-  });
+  db.ready
+    .then(() => {
+      if (!db.isMysqlConnected) {
+        throw new Error(`Não foi possível conectar ao banco "${process.env.DB_NAME || 'NEURAL'}". Confira backend/.env.`);
+      }
+
+      app.listen(PORT, () => {
+        console.log(`Servidor N Neural executando na porta ${PORT}`);
+      });
+    })
+    .catch(err => {
+      console.error('Não foi possível inicializar o banco de dados:', err);
+      process.exitCode = 1;
+    });
 }
 
 module.exports = app;

@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 
 const mysqlConfig = {
   type: 'mysql',
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   port: parseInt(process.env.DB_PORT || '3306', 10),
@@ -18,25 +18,14 @@ class Database {
     this.pool = null;
     this.isMysqlConnected = false;
     this.reset();
-    this.initMySQL();
+    this.ready = this.initMySQL();
   }
 
   async initMySQL() {
     if (!mysql) return;
     try {
-      // Connect without database first to ensure NEURAL db exists
-      const conn = await mysql.createConnection({
-        host: mysqlConfig.host,
-        user: mysqlConfig.user,
-        password: mysqlConfig.password,
-        port: mysqlConfig.port
-      });
-
-      await conn.query(`CREATE DATABASE IF NOT EXISTS \`${mysqlConfig.database}\`;`);
-      await conn.end();
-
-      // Now create pool with target database
       this.pool = mysql.createPool(mysqlConfig);
+      await this.pool.query('SELECT 1');
       
       // Initialize Schema
       await this.pool.query(`
@@ -173,7 +162,11 @@ class Database {
       await this.syncFromMySQL();
     } catch (err) {
       this.isMysqlConnected = false;
-      console.log(`ℹ MySQL indisponível (${err.message}). Utilizando modo de dados em memória/persistência rápida.`);
+      if (this.pool) {
+        await this.pool.end();
+        this.pool = null;
+      }
+      console.error(`Erro ao inicializar o MySQL (${err.message}).`);
     }
   }
 
@@ -214,6 +207,7 @@ class Database {
       }
     } catch (err) {
       console.error('Erro ao sincronizar com MySQL:', err);
+      throw err;
     }
   }
 
