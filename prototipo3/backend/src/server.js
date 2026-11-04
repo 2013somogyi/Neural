@@ -51,12 +51,22 @@ app.use(async (req, res, next) => {
 });
 
 // Healthcheck
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    service: 'N Neural API',
-    database: db.isMysqlConnected ? 'connected' : 'memory-fallback'
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.json({
+      status: 'ok',
+      service: 'N Neural API',
+      database: 'connected'
+    });
+  } catch (error) {
+    console.error('Falha ao verificar a conexão com o MySQL:', error.message);
+    res.status(503).json({
+      status: 'error',
+      service: 'N Neural API',
+      database: 'disconnected'
+    });
+  }
 });
 
 // Rate Limiting for Auth Endpoints
@@ -88,17 +98,13 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   db.ready
     .then(() => {
-      if (!db.isMysqlConnected) {
-        throw new Error(`Não foi possível conectar ao banco "${process.env.DB_NAME || 'NEURAL'}". Confira backend/.env.`);
-      }
-
       app.listen(PORT, () => {
         console.log(`Servidor N Neural executando na porta ${PORT}`);
       });
     })
     .catch(err => {
       console.error('Não foi possível inicializar o banco de dados:', err);
-      process.exitCode = 1;
+      process.exit(1);
     });
 }
 

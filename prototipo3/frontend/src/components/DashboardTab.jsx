@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { apiRequest } from '../api/client';
+import { formatMoney } from '../utils/format';
 
 export function DashboardTab() {
   const [data, setData] = useState(null);
@@ -22,7 +23,7 @@ export function DashboardTab() {
 
   if (loading) return <div className="p-6 text-sm text-slate-500">Carregando Dashboard...</div>;
 
-  const faturamento = data ? `R$ ${(data.faturamentoTotal || 0).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
+  const faturamento = data ? `R$ ${formatMoney(data.faturamentoTotal).replace('.', ',')}` : 'R$ 0,00';
 
   return (
     <div className="space-y-6">
@@ -46,7 +47,7 @@ export function DashboardTab() {
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-bold text-slate-500 uppercase">Faturamento (Mês)</p>
-              <h2 className="text-3xl font-extrabold text-orange-600 mt-2">{faturamento}</h2>
+              <h2 className="sensitive-value text-3xl font-extrabold text-orange-600 mt-2">{faturamento}</h2>
             </div>
             <div className="bg-emerald-100 text-emerald-700 p-3 rounded-xl">
               <i className="fa-solid fa-dollar-sign text-xl"></i>

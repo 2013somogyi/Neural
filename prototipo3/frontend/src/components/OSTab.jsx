@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
+import { formatMoney } from '../utils/format';
+import { useAuth } from '../context/AuthContext';
+import { formatCurrencyBRL, maskCurrencyBRL, parseCurrencyBRL } from '../utils/validation';
 
 export function OSTab({ showToast }) {
+  const { user } = useAuth();
+  const canEdit = ['Admin', 'Tecnico'].includes(user?.perfil);
+  const canDelete = user?.perfil === 'Admin';
   const [osList, setOsList] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
   const [filtroStatus, setFiltroStatus] = useState('');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Modal states
   const [showNovaModal, setShowNovaModal] = useState(false);
@@ -24,35 +31,33 @@ export function OSTab({ showToast }) {
     numero_serie: '',
     relato_problema: '',
     id_tecnico_responsavel: '',
-    prazo_garantia_dias: 90,
+    prazo_garantia_dias: '',
     status: 'Aberta',
-    valor_total: 0,
-    valor_desconto: 0
+    valor_total: '',
+    valor_desconto: ''
   });
 
   const loadAuxiliaryData = async () => {
     try {
-      const [cliData, tecData] = await Promise.all([
-        apiRequest('/clientes'),
-        apiRequest('/tecnicos')
-      ]);
+      const cliData = await apiRequest('/clientes');
       setClientes(cliData);
-      setTecnicos(tecData);
+      if (user?.perfil === 'Admin') setTecnicos(await apiRequest('/tecnicos'));
     } catch (err) {
-      console.error(err);
+      showToast(err.message || 'Não foi possível carregar os dados auxiliares da OS.', 'error');
     }
   };
 
   const loadOS = async (statusFilter = filtroStatus, searchFilter = busca) => {
     try {
       setLoading(true);
+      setLoadError('');
       let url = '/os?';
       if (statusFilter) url += `status=${encodeURIComponent(statusFilter)}&`;
       if (searchFilter) url += `busca=${encodeURIComponent(searchFilter)}`;
       const data = await apiRequest(url);
       setOsList(data);
     } catch (err) {
-      showToast(err.message, 'error');
+      setLoadError(err.message || 'Não foi possível carregar as ordens de serviço.');
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ export function OSTab({ showToast }) {
 
   const resetNovoForm = () => {
     setOsForm({
-      id_cliente: clientes.length > 0 ? clientes[0].id_cliente : '',
+      id_cliente: '',
       tipo_documento: 'OS',
       prioridade: 'Média',
       equipamento_tipo: '',
@@ -79,19 +84,24 @@ export function OSTab({ showToast }) {
       numero_serie: '',
       relato_problema: '',
       id_tecnico_responsavel: '',
-      prazo_garantia_dias: 90,
+      prazo_garantia_dias: '',
       status: 'Aberta',
-      valor_total: 0,
-      valor_desconto: 0
+      valor_total: '',
+      valor_desconto: ''
     });
   };
 
   const handleSaveNova = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...osForm,
+        valor_total: parseCurrencyBRL(osForm.valor_total),
+        valor_desconto: parseCurrencyBRL(osForm.valor_desconto)
+      };
       const newOS = await apiRequest('/os', {
         method: 'POST',
-        body: JSON.stringify(osForm)
+        body: JSON.stringify(payload)
       });
       showToast(`Ordem de Serviço criada com sucesso! (Nº 000${newOS.numero_os})`);
       setShowNovaModal(false);
@@ -113,10 +123,10 @@ export function OSTab({ showToast }) {
       numero_serie: osItem.numero_serie || '',
       relato_problema: osItem.relato_problema || '',
       id_tecnico_responsavel: osItem.id_tecnico_responsavel || '',
-      prazo_garantia_dias: osItem.prazo_garantia_dias || 90,
+      prazo_garantia_dias: osItem.prazo_garantia_dias ?? '',
       status: osItem.status || 'Aberta',
-      valor_total: osItem.valor_total || 0,
-      valor_desconto: osItem.valor_desconto || 0
+      valor_total: formatCurrencyBRL(osItem.valor_total ?? 0),
+      valor_desconto: formatCurrencyBRL(osItem.valor_desconto ?? 0)
     });
     setShowEditModal(true);
   };
@@ -124,9 +134,25 @@ export function OSTab({ showToast }) {
   const handleSaveEdicao = async (e) => {
     e.preventDefault();
     try {
+      const updateFields = [
+        'tipo_documento', 'prioridade', 'equipamento_tipo', 'marca', 'modelo',
+        'numero_serie', 'relato_problema', 'prazo_garantia_dias', 'status',
+        'valor_total', 'valor_desconto'
+      ];
+      if (user?.perfil === 'Admin') updateFields.push('id_tecnico_responsavel');
+      const updates = Object.fromEntries(updateFields.map(field => {
+        const value = osForm[field];
+        if (field === 'valor_total' || field === 'valor_desconto') {
+          return [field, parseCurrencyBRL(value)];
+        }
+        if (value !== '') return [field, value];
+        return [field, ['valor_total', 'valor_desconto'].includes(field) ? 0
+          : field === 'prazo_garantia_dias' ? 90
+            : null];
+      }));
       await apiRequest(`/os/${selectedOS.id_os}`, {
         method: 'PUT',
-        body: JSON.stringify(osForm)
+        body: JSON.stringify(updates)
       });
       showToast('Ordem de Serviço atualizada com sucesso!');
       setShowEditModal(false);
@@ -149,9 +175,13 @@ export function OSTab({ showToast }) {
   };
 
   const calcLiquido = () => {
-    const total = parseFloat(osForm.valor_total) || 0;
-    const desc = parseFloat(osForm.valor_desconto) || 0;
-    return Math.max(0, total - desc).toFixed(2);
+    const total = parseCurrencyBRL(osForm.valor_total);
+    const desc = parseCurrencyBRL(osForm.valor_desconto);
+    return Math.max(0, total - desc).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const updateCurrencyField = (field, value) => {
+    setOsForm(prev => ({ ...prev, [field]: maskCurrencyBRL(value) }));
   };
 
   return (
@@ -160,12 +190,12 @@ export function OSTab({ showToast }) {
       <div className="bg-white p-4 rounded-2xl border-2 border-orange-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-black text-orange-600 uppercase tracking-wide">Ordem de Serviço (O.S)</h2>
-          <button
+          {canEdit && <button
             onClick={() => { resetNovoForm(); setShowNovaModal(true); }}
             className="btn-dorfic text-xs px-4 py-2 flex items-center gap-2"
           >
             <i className="fa-solid fa-file-circle-plus"></i> Nova O.S.
-          </button>
+          </button>}
         </div>
 
         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
@@ -176,8 +206,10 @@ export function OSTab({ showToast }) {
           >
             <option value="">Todos os Status</option>
             <option value="Aberta">Aberta</option>
-            <option value="Aguardando Peça">Aguardando Peça</option>
-            <option value="Em Execução">Em Execução</option>
+            <option value="Em Orçamento">Em Orçamento</option>
+            <option value="Aprovada">Aprovada</option>
+            <option value="Em Atendimento">Em Atendimento</option>
+            <option value="Aguardando Peças">Aguardando Peças</option>
             <option value="Concluída">Concluída</option>
             <option value="Cancelada">Cancelada</option>
           </select>
@@ -216,16 +248,28 @@ export function OSTab({ showToast }) {
                 <tr>
                   <td colSpan="7" className="p-4 text-center text-slate-500">Carregando Ordens de Serviço...</td>
                 </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan="7" className="p-4 text-center text-red-700">
+                    <span>{loadError}</span>
+                    <button type="button" onClick={() => loadOS()} className="ml-3 font-bold underline">
+                      Tentar novamente
+                    </button>
+                  </td>
+                </tr>
               ) : osList.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-4 text-center text-slate-500">Nenhuma Ordem de Serviço encontrada.</td>
+                  <td colSpan="7" className="p-4 text-center text-slate-500">
+                    Nenhuma ordem de serviço encontrada.
+                    {canEdit && <button type="button" onClick={() => { resetNovoForm(); setShowNovaModal(true); }} className="ml-2 font-bold text-orange-700 underline">Criar primeira OS</button>}
+                  </td>
                 </tr>
               ) : (
                 osList.map(o => {
                   let statusBadge = 'bg-slate-100 text-slate-700';
-                  if (o.status === 'Em Execução') statusBadge = 'bg-blue-100 text-blue-700 border border-blue-200';
+                  if (o.status === 'Em Atendimento') statusBadge = 'bg-blue-100 text-blue-700 border border-blue-200';
                   if (o.status === 'Concluída') statusBadge = 'bg-emerald-100 text-emerald-700 border border-emerald-200';
-                  if (o.status === 'Aguardando Peça') statusBadge = 'bg-orange-100 text-orange-700 border border-orange-200';
+                  if (o.status === 'Aguardando Peças') statusBadge = 'bg-orange-100 text-orange-700 border border-orange-200';
                   if (o.status === 'Cancelada') statusBadge = 'bg-red-100 text-red-700 border border-red-200';
 
                   return (
@@ -239,7 +283,7 @@ export function OSTab({ showToast }) {
                           {o.status}
                         </span>
                       </td>
-                      <td className="p-3 font-bold">R$ {(o.valor_liquido || 0).toFixed(2)}</td>
+                      <td className="p-3 font-bold">R$ {formatMoney(o.valor_liquido)}</td>
                       <td className="p-3 text-center">
                         <button
                           onClick={() => openEdicao(o)}
@@ -336,7 +380,7 @@ export function OSTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="SN123456"
+                  placeholder="Número de série (opcional)"
                   value={osForm.numero_serie}
                   onChange={e => setOsForm({ ...osForm, numero_serie: e.target.value })}
                 />
@@ -357,7 +401,7 @@ export function OSTab({ showToast }) {
                 </select>
               </div>
 
-              <div>
+              {user?.perfil === 'Admin' && <div>
                 <label className="block font-bold text-slate-700 mb-1">Técnico Responsável:</label>
                 <select
                   className="input-dorfic w-full"
@@ -371,7 +415,7 @@ export function OSTab({ showToast }) {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Prazo Garantia (Dias):</label>
@@ -417,6 +461,7 @@ export function OSTab({ showToast }) {
             </div>
 
             <form onSubmit={handleSaveEdicao} className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <fieldset disabled={!canEdit} className="contents">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Status:</label>
                 <select
@@ -425,8 +470,10 @@ export function OSTab({ showToast }) {
                   onChange={e => setOsForm({ ...osForm, status: e.target.value })}
                 >
                   <option value="Aberta">Aberta</option>
-                  <option value="Aguardando Peça">Aguardando Peça</option>
-                  <option value="Em Execução">Em Execução</option>
+                  <option value="Em Orçamento">Em Orçamento</option>
+                  <option value="Aprovada">Aprovada</option>
+                  <option value="Em Atendimento">Em Atendimento</option>
+                  <option value="Aguardando Peças">Aguardando Peças</option>
                   <option value="Concluída">Concluída</option>
                   <option value="Cancelada">Cancelada</option>
                 </select>
@@ -458,7 +505,7 @@ export function OSTab({ showToast }) {
                 </select>
               </div>
 
-              <div>
+              {user?.perfil === 'Admin' && <div>
                 <label className="block font-bold text-slate-700 mb-1">Técnico Responsável:</label>
                 <select
                   className="input-dorfic w-full"
@@ -472,33 +519,35 @@ export function OSTab({ showToast }) {
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>}
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Valor Total (R$):</label>
+                <label htmlFor="os-valor-total" className="block font-bold text-slate-700 mb-1">Valor Total (R$):</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  id="os-valor-total"
+                  type="text"
+                  inputMode="decimal"
                   className="input-dorfic w-full"
                   value={osForm.valor_total}
-                  onChange={e => setOsForm({ ...osForm, valor_total: e.target.value })}
+                  onInput={e => updateCurrencyField('valor_total', e.currentTarget.value)}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Desconto (R$):</label>
+                <label htmlFor="os-valor-desconto" className="block font-bold text-slate-700 mb-1">Desconto (R$):</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  id="os-valor-desconto"
+                  type="text"
+                  inputMode="decimal"
                   className="input-dorfic w-full"
                   value={osForm.valor_desconto}
-                  onChange={e => setOsForm({ ...osForm, valor_desconto: e.target.value })}
+                  onInput={e => updateCurrencyField('valor_desconto', e.currentTarget.value)}
                 />
               </div>
 
               <div className="md:col-span-2 bg-orange-50 p-3 rounded-xl font-bold text-orange-900 flex justify-between items-center">
                 <span>Valor Líquido Final:</span>
-                <span className="text-lg">R$ {calcLiquido()}</span>
+                <span className="sensitive-value text-lg">R$ {calcLiquido()}</span>
               </div>
 
               <div className="md:col-span-2">
@@ -510,22 +559,23 @@ export function OSTab({ showToast }) {
                   onChange={e => setOsForm({ ...osForm, relato_problema: e.target.value })}
                 ></textarea>
               </div>
+              </fieldset>
 
               <div className="md:col-span-2 pt-4 flex justify-between gap-3 border-t border-orange-100">
-                <button
+                {canDelete && <button
                   type="button"
                   onClick={handleDeleteOS}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-xl text-xs shadow"
                 >
                   Excluir
-                </button>
+                </button>}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowEditModal(false)} className="btn-dorfic-secondary px-6 py-2">
                     Cancelar
                   </button>
-                  <button type="submit" className="btn-dorfic px-8 py-2">
+                  {canEdit && <button type="submit" className="btn-dorfic px-8 py-2">
                     Salvar
-                  </button>
+                  </button>}
                 </div>
               </div>
             </form>

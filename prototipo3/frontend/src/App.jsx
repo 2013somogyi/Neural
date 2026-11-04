@@ -3,9 +3,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LandingView } from './views/LandingView';
 import { LoginView } from './views/LoginView';
 import { SignupView } from './views/SignupView';
-import { CheckoutView } from './views/CheckoutView';
 import { CadEmpresaView } from './views/CadEmpresaView';
 import { CadAdmView } from './views/CadAdmView';
+import { CheckoutView } from './views/CheckoutView';
 import { MainLayout } from './layouts/MainLayout';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -13,6 +13,8 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState('landing');
   const [toast, setToast] = useState(null);
   const [tempEmpresa, setTempEmpresa] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [paidPlanId, setPaidPlanId] = useState(null);
   const { user } = useAuth();
 
   const showToast = (message, type = 'success') => {
@@ -23,7 +25,32 @@ function AppContent() {
   };
 
   const handleNavigate = (screen) => {
-    setCurrentScreen(screen);
+    let nextScreen = screen;
+    if (screen === 'cad-empresa' || screen === 'cad-adm') {
+      nextScreen = paidPlanId ? screen : 'signup';
+    } else if (screen === 'checkout' && !selectedPlanId) {
+      nextScreen = 'signup';
+    }
+
+    const publicScreens = ['landing', 'login', 'signup', 'checkout', 'cad-empresa', 'cad-adm', 'main'];
+    setCurrentScreen(publicScreens.includes(nextScreen) ? nextScreen : 'landing');
+    window.scrollTo(0, 0);
+  };
+
+  const handleChoosePlan = planId => {
+    setSelectedPlanId(planId);
+    setPaidPlanId(null);
+    setCurrentScreen('checkout');
+    window.scrollTo(0, 0);
+  };
+
+  const handlePaymentComplete = () => {
+    setPaidPlanId(selectedPlanId);
+  };
+
+  const continueRegistration = () => {
+    if (!paidPlanId) return;
+    setCurrentScreen('cad-empresa');
     window.scrollTo(0, 0);
   };
 
@@ -43,22 +70,44 @@ function AppContent() {
         </div>
       )}
 
+      {!showMain && currentScreen !== 'landing' && (
+        <header className="public-flow-header">
+          <a href="#" onClick={event => { event.preventDefault(); handleNavigate('landing'); }} className="public-flow-brand">
+            <span className="landing-brand-mark" aria-hidden="true">N</span>
+            <span>N Neural</span>
+          </a>
+          <button type="button" className="btn-dorfic-secondary public-flow-home" onClick={() => handleNavigate('landing')}>
+            <i className="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            <span className="public-flow-home-label">Voltar para o início</span>
+            <span className="public-flow-home-short">Início</span>
+          </button>
+        </header>
+      )}
+
       {showMain ? (
         <MainLayout onNavigate={handleNavigate} showToast={showToast} />
       ) : (
         <>
-          {currentScreen === 'landing' && <LandingView onNavigate={handleNavigate} />}
+          {currentScreen === 'landing' && <LandingView onNavigate={handleNavigate} onChoosePlan={handleChoosePlan} />}
           {currentScreen === 'login' && <LoginView onNavigate={handleNavigate} showToast={showToast} />}
-          {currentScreen === 'signup' && <SignupView onNavigate={handleNavigate} showToast={showToast} />}
-          {currentScreen === 'checkout' && <CheckoutView onNavigate={handleNavigate} />}
-          {currentScreen === 'cad-empresa' && (
+          {currentScreen === 'signup' && <SignupView onNavigate={handleNavigate} onChoosePlan={handleChoosePlan} />}
+          {currentScreen === 'checkout' && (
+            <CheckoutView
+              planId={selectedPlanId}
+              isPaid={paidPlanId === selectedPlanId}
+              onNavigate={handleNavigate}
+              onPaymentComplete={handlePaymentComplete}
+              onContinue={continueRegistration}
+            />
+          )}
+          {currentScreen === 'cad-empresa' && paidPlanId && (
             <CadEmpresaView
               onNavigate={handleNavigate}
               showToast={showToast}
               onSaveTempEmpresa={data => setTempEmpresa(data)}
             />
           )}
-          {currentScreen === 'cad-adm' && (
+          {currentScreen === 'cad-adm' && paidPlanId && (
             <CadAdmView
               onNavigate={handleNavigate}
               showToast={showToast}

@@ -5,10 +5,9 @@ export function CadAdmView({ onNavigate, showToast, tempEmpresa }) {
   const { registerCompany } = useAuth();
   const [loading, setLoading] = useState(false);
   const [adm, setAdm] = useState({
-    nome: 'Carlos Eduardo',
-    login: 'carlos.adm',
-    cpf: '123.456.789-00',
-    senha: '123456'
+    nome: '',
+    login: '',
+    senha: ''
   });
 
   const handleChange = (field, value) => {
@@ -47,6 +46,8 @@ export function CadAdmView({ onNavigate, showToast, tempEmpresa }) {
               type="text"
               className="input-dorfic w-full text-sm"
               required
+              autoComplete="name"
+              placeholder="Digite o nome completo"
               value={adm.nome}
               onChange={e => handleChange('nome', e.target.value)}
             />
@@ -57,18 +58,10 @@ export function CadAdmView({ onNavigate, showToast, tempEmpresa }) {
               type="text"
               className="input-dorfic w-full text-sm"
               required
+              autoComplete="username"
+              placeholder="Escolha um login"
               value={adm.login}
               onChange={e => handleChange('login', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">CPF:</label>
-            <input
-              type="text"
-              className="input-dorfic w-full text-sm"
-              required
-              value={adm.cpf}
-              onChange={e => handleChange('cpf', e.target.value)}
             />
           </div>
           <div>
@@ -77,6 +70,9 @@ export function CadAdmView({ onNavigate, showToast, tempEmpresa }) {
               type="password"
               className="input-dorfic w-full text-sm"
               required
+              minLength={8}
+              autoComplete="new-password"
+              placeholder="Mínimo de 8 caracteres"
               value={adm.senha}
               onChange={e => handleChange('senha', e.target.value)}
             />

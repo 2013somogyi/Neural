@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiRequest, setAuthToken, getAuthToken } from '../api/client';
+import { apiRequest, setAuthToken } from '../api/client';
 
 const AuthContext = createContext();
 
@@ -7,20 +7,44 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [empresa, setEmpresa] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('Prime');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('nneural_theme') === 'dark';
+  const [themePreference, setThemePreference] = useState(() => {
+    const saved = localStorage.getItem('nneural_theme');
+    return ['light', 'dark', 'system'].includes(saved) ? saved : 'system';
   });
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const userThemeKey = user
+    ? `nneural_theme_user_${user.id_usuario || user.id_tecnico}`
+    : 'nneural_theme';
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('nneural_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('nneural_theme', 'light');
+    const saved = localStorage.getItem(userThemeKey);
+    setThemePreference(['light', 'dark', 'system'].includes(saved) ? saved : 'system');
+  }, [userThemeKey]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const dark = themePreference === 'dark'
+        || (themePreference === 'system' && mediaQuery.matches);
+      setIsDarkMode(dark);
+      document.documentElement.classList.toggle('dark', dark);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    };
+
+    applyTheme();
+    if (themePreference === 'system') {
+      mediaQuery.addEventListener('change', applyTheme);
+      return () => mediaQuery.removeEventListener('change', applyTheme);
     }
-  }, [isDarkMode]);
+  }, [themePreference]);
+
+  const updateThemePreference = preference => {
+    setThemePreference(preference);
+    localStorage.setItem('nneural_theme', preference);
+    localStorage.setItem(userThemeKey, preference);
+  };
+  const toggleTheme = () => updateThemePreference(isDarkMode ? 'light' : 'dark');
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -31,10 +55,6 @@ export function AuthProvider({ children }) {
       window.removeEventListener('nneural_unauthorized', handleUnauthorized);
     };
   }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode(prev => !prev);
-  };
 
   const login = async (loginUser, senha) => {
     const data = await apiRequest('/auth/login', {
@@ -68,10 +88,10 @@ export function AuthProvider({ children }) {
       empresa,
       setEmpresa,
       loading,
-      selectedPlan,
-      setSelectedPlan,
       isDarkMode,
       toggleTheme,
+      themePreference,
+      setThemePreference: updateThemePreference,
       login,
       registerCompany,
       logout

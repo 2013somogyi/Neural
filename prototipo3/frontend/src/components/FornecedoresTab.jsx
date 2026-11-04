@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
+import { isValidCNPJ, isValidBrazilianPhone, isValidEmail, maskBrazilianDocument, maskBrazilianPhone } from '../utils/validation';
 
 export function FornecedoresTab({ showToast }) {
   const [fornecedores, setFornecedores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedForn, setSelectedForn] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const [form, setForm] = useState({
     nome_juridico: '',
@@ -18,10 +21,11 @@ export function FornecedoresTab({ showToast }) {
   const loadFornecedores = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const data = await apiRequest('/fornecedores');
       setFornecedores(data);
     } catch (err) {
-      showToast(err.message, 'error');
+      setLoadError(err.message || 'Não foi possível carregar os fornecedores.');
     } finally {
       setLoading(false);
     }
@@ -33,6 +37,7 @@ export function FornecedoresTab({ showToast }) {
 
   const openNovo = () => {
     setSelectedForn(null);
+    setFormErrors({});
     setForm({
       nome_juridico: '',
       cnpj: '',
@@ -45,23 +50,38 @@ export function FornecedoresTab({ showToast }) {
 
   const openEdicao = (f) => {
     setSelectedForn(f);
-    setForm({ ...f });
+    setFormErrors({});
+    setForm({ ...f, cnpj: maskBrazilianDocument(f.cnpj || ''), telefone: maskBrazilianPhone(f.telefone || '') });
     setShowModal(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const errors = {};
+    if (!isValidCNPJ(form.cnpj)) errors.cnpj = 'Informe um CNPJ válido.';
+    if (form.telefone && !isValidBrazilianPhone(form.telefone)) errors.telefone = 'Informe um telefone com DDD válido.';
+    if (form.email && !isValidEmail(form.email)) errors.email = 'Informe um e-mail válido.';
+    setFormErrors(errors);
+    if (Object.keys(errors).length) return;
     try {
+      const payload = {
+        nome_juridico: form.nome_juridico,
+        cnpj: form.cnpj,
+        produtos: form.produtos,
+        telefone: form.telefone,
+        email: form.email
+      };
+
       if (selectedForn) {
         await apiRequest(`/fornecedores/${selectedForn.id_fornecedor}`, {
           method: 'PUT',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Fornecedor atualizado com sucesso!');
       } else {
         await apiRequest('/fornecedores', {
           method: 'POST',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Fornecedor cadastrado com sucesso!');
       }
@@ -70,6 +90,16 @@ export function FornecedoresTab({ showToast }) {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  };
+
+  const updateFormField = (field, value) => {
+    const maskedValue = field === 'cnpj'
+      ? maskBrazilianDocument(value)
+      : field === 'telefone'
+        ? maskBrazilianPhone(value)
+        : value;
+    setForm(prev => ({ ...prev, [field]: maskedValue }));
+    if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleDelete = async () => {
@@ -109,6 +139,13 @@ export function FornecedoresTab({ showToast }) {
             {loading ? (
               <tr>
                 <td colSpan="6" className="p-4 text-center text-slate-500">Carregando fornecedores...</td>
+              </tr>
+            ) : loadError ? (
+              <tr>
+                <td colSpan="6" className="p-4 text-center text-red-700">
+                  <span>{loadError}</span>
+                  <button type="button" onClick={loadFornecedores} className="ml-3 font-bold underline">Tentar novamente</button>
+                </td>
               </tr>
             ) : fornecedores.length === 0 ? (
               <tr>
@@ -151,19 +188,27 @@ export function FornecedoresTab({ showToast }) {
                   type="text"
                   className="input-dorfic w-full"
                   required
+                  autoComplete="organization"
+                  placeholder="Digite o nome jurídico"
                   value={form.nome_juridico}
                   onChange={e => setForm({ ...form, nome_juridico: e.target.value })}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">CNPJ:</label>
+                <label htmlFor="fornecedor-cnpj" className="block font-bold text-slate-700 mb-1">CNPJ:*</label>
                 <input
+                  id="fornecedor-cnpj"
                   type="text"
                   className="input-dorfic w-full"
+                  required
+                  placeholder="Digite o CNPJ"
                   value={form.cnpj}
-                  onChange={e => setForm({ ...form, cnpj: e.target.value })}
+                  aria-invalid={Boolean(formErrors.cnpj)}
+                  aria-describedby={formErrors.cnpj ? 'fornecedor-cnpj-error' : undefined}
+                  onInput={e => updateFormField('cnpj', e.currentTarget.value)}
                 />
+                {formErrors.cnpj && <p className="field-error" id="fornecedor-cnpj-error">{formErrors.cnpj}</p>}
               </div>
 
               <div>
@@ -171,6 +216,8 @@ export function FornecedoresTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
+                  autoComplete="tel"
+                  placeholder="Telefone (opcional)"
                   value={form.produtos}
                   onChange={e => setForm({ ...form, produtos: e.target.value })}
                 />
@@ -178,22 +225,34 @@ export function FornecedoresTab({ showToast }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Telefone:</label>
+                  <label htmlFor="fornecedor-telefone" className="block font-bold text-slate-700 mb-1">Telefone:</label>
                   <input
+                    id="fornecedor-telefone"
                     type="text"
                     className="input-dorfic w-full"
                     value={form.telefone}
-                    onChange={e => setForm({ ...form, telefone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                    aria-invalid={Boolean(formErrors.telefone)}
+                    aria-describedby={formErrors.telefone ? 'fornecedor-telefone-error' : undefined}
+                    onInput={e => updateFormField('telefone', e.currentTarget.value)}
                   />
+                  {formErrors.telefone && <p className="field-error" id="fornecedor-telefone-error">{formErrors.telefone}</p>}
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">E-mail:</label>
+                  <label htmlFor="fornecedor-email" className="block font-bold text-slate-700 mb-1">E-mail:</label>
                   <input
-                    type="email"
+                    id="fornecedor-email"
+                    type="text"
+                    inputMode="email"
                     className="input-dorfic w-full"
+                    autoComplete="email"
+                    placeholder="E-mail (opcional)"
                     value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
+                    aria-invalid={Boolean(formErrors.email)}
+                    aria-describedby={formErrors.email ? 'fornecedor-email-error' : undefined}
+                    onInput={e => updateFormField('email', e.currentTarget.value)}
                   />
+                  {formErrors.email && <p className="field-error" id="fornecedor-email-error">{formErrors.email}</p>}
                 </div>
               </div>
 

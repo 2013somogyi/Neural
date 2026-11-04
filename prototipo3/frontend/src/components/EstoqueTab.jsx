@@ -1,27 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
+import { formatMoney } from '../utils/format';
+import { useAuth } from '../context/AuthContext';
 
 export function EstoqueTab({ showToast }) {
+  const { user, empresa } = useAuth();
+  const canEdit = user?.perfil === 'Admin';
+  const hasStockControl = empresa?.modelo_estoque !== 'Sem Estoque';
   const [pecas, setPecas] = useState([]);
+  const [fornecedores, setFornecedores] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedPeca, setSelectedPeca] = useState(null);
 
   const [form, setForm] = useState({
     nome_peca: '',
     categoria: '',
-    preco_custo_atual: 0,
-    preco_venda: 0,
-    quantidade_estoque: 0
+    id_fornecedor: '',
+    preco_custo_atual: '',
+    preco_venda: ''
   });
 
   const loadPecas = async () => {
     try {
       setLoading(true);
-      const data = await apiRequest('/pecas');
-      setPecas(data);
+      setLoadError('');
+      const [parts, suppliers] = await Promise.all([
+        apiRequest('/pecas'),
+        user?.perfil === 'Admin' ? apiRequest('/fornecedores') : Promise.resolve([])
+      ]);
+      setPecas(parts);
+      setFornecedores(suppliers);
     } catch (err) {
-      showToast(err.message, 'error');
+      setLoadError(err.message || 'Não foi possível carregar as peças.');
     } finally {
       setLoading(false);
     }
@@ -36,32 +48,39 @@ export function EstoqueTab({ showToast }) {
     setForm({
       nome_peca: '',
       categoria: '',
-      preco_custo_atual: 0,
-      preco_venda: 0,
-      quantidade_estoque: 0
+      id_fornecedor: '',
+      preco_custo_atual: '',
+      preco_venda: ''
     });
     setShowModal(true);
   };
 
   const openEdicao = (p) => {
     setSelectedPeca(p);
-    setForm({ ...p });
+    setForm({ ...p, id_fornecedor: p.id_fornecedor || '' });
     setShowModal(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        nome_peca: form.nome_peca,
+        categoria: form.categoria,
+        id_fornecedor: form.id_fornecedor,
+        preco_custo_atual: form.preco_custo_atual || 0,
+        preco_venda: form.preco_venda || 0
+      };
       if (selectedPeca) {
         await apiRequest(`/pecas/${selectedPeca.id_peca}`, {
           method: 'PUT',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Peça atualizada com sucesso!');
       } else {
         await apiRequest('/pecas', {
           method: 'POST',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Peça cadastrada com sucesso!');
       }
@@ -88,9 +107,9 @@ export function EstoqueTab({ showToast }) {
     <div className="space-y-4">
       <div className="bg-white p-4 rounded-2xl border-2 border-orange-100 shadow-sm flex justify-between items-center flex-wrap gap-4">
         <h2 className="text-xl font-black text-orange-600 uppercase">Estoque & Peças (PECA)</h2>
-        <button onClick={openNovo} className="btn-dorfic text-xs px-4 py-2 flex items-center gap-2">
+        {canEdit && <button onClick={openNovo} className="btn-dorfic text-xs px-4 py-2 flex items-center gap-2">
           <i className="fa-solid fa-box-archive"></i> Cadastrar Nova Peça
-        </button>
+        </button>}
       </div>
 
       <div className="bg-white rounded-2xl border-2 border-orange-100 shadow-sm overflow-hidden">
@@ -111,6 +130,13 @@ export function EstoqueTab({ showToast }) {
               <tr>
                 <td colSpan="7" className="p-4 text-center text-slate-500">Carregando peças...</td>
               </tr>
+            ) : loadError ? (
+              <tr>
+                <td colSpan="7" className="p-4 text-center text-red-700">
+                  <span>{loadError}</span>
+                  <button type="button" onClick={loadPecas} className="ml-3 font-bold underline">Tentar novamente</button>
+                </td>
+              </tr>
             ) : pecas.length === 0 ? (
               <tr>
                 <td colSpan="7" className="p-4 text-center text-slate-500">Nenhuma peça cadastrada.</td>
@@ -121,13 +147,13 @@ export function EstoqueTab({ showToast }) {
                   <td className="p-3 font-mono text-slate-500">{p.id_peca}</td>
                   <td className="p-3 font-bold text-slate-800">{p.nome_peca}</td>
                   <td className="p-3">{p.categoria}</td>
-                  <td className="p-3 text-red-500">R$ {(p.preco_custo_atual || 0).toFixed(2)}</td>
-                  <td className="p-3 text-emerald-600 font-bold">R$ {(p.preco_venda || 0).toFixed(2)}</td>
+                  <td className="p-3 text-red-500">R$ {formatMoney(p.preco_custo_atual)}</td>
+                  <td className="p-3 text-emerald-600 font-bold">R$ {formatMoney(p.preco_venda)}</td>
                   <td className="p-3 font-black text-lg">{p.quantidade_estoque}</td>
                   <td className="p-3 text-center">
-                    <button onClick={() => openEdicao(p)} className="text-slate-400 hover:text-orange-600">
+                    {canEdit && <button onClick={() => openEdicao(p)} className="text-slate-400 hover:text-orange-600">
                       <i className="fa-solid fa-pen"></i>
-                    </button>
+                    </button>}
                   </td>
                 </tr>
               ))
@@ -147,6 +173,11 @@ export function EstoqueTab({ showToast }) {
             </div>
 
             <form onSubmit={handleSave} className="space-y-3 text-xs">
+              {hasStockControl && (
+                <div className="rounded-lg bg-orange-50 p-3 text-xs text-slate-700">
+                  O saldo inicial e as alterações de estoque devem ser lançados em Movimentações.
+                </div>
+              )}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Nome da Peça:*</label>
                 <input
@@ -166,6 +197,26 @@ export function EstoqueTab({ showToast }) {
                   value={form.categoria}
                   onChange={e => setForm({ ...form, categoria: e.target.value })}
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Fornecedor:*</label>
+                <select
+                  className="input-dorfic w-full"
+                  required
+                  value={form.id_fornecedor}
+                  onChange={e => setForm({ ...form, id_fornecedor: e.target.value })}
+                >
+                  <option value="">Selecione um fornecedor</option>
+                  {fornecedores.map(fornecedor => (
+                    <option key={fornecedor.id_fornecedor} value={fornecedor.id_fornecedor}>
+                      {fornecedor.nome_juridico}
+                    </option>
+                  ))}
+                </select>
+                {fornecedores.length === 0 && (
+                  <p className="mt-1 text-red-600">Cadastre um fornecedor antes de incluir peças no estoque.</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -189,16 +240,6 @@ export function EstoqueTab({ showToast }) {
                     onChange={e => setForm({ ...form, preco_venda: e.target.value })}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Quantidade em Estoque:</label>
-                <input
-                  type="number"
-                  className="input-dorfic w-full"
-                  value={form.quantidade_estoque}
-                  onChange={e => setForm({ ...form, quantidade_estoque: e.target.value })}
-                />
               </div>
 
               <div className="pt-4 flex justify-between gap-3 border-t border-orange-100">

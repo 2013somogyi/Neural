@@ -1,463 +1,133 @@
-const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
 
-const mysqlConfig = {
-  type: 'mysql',
+const requiredEnvironment = ['DB_USER', 'DB_NAME'];
+const missingEnvironment = requiredEnvironment.filter(name => !process.env[name]);
+
+if (missingEnvironment.length > 0) {
+  throw new Error(`Configure as variáveis de ambiente obrigatórias: ${missingEnvironment.join(', ')}.`);
+}
+
+const port = Number(process.env.DB_PORT || 3306);
+const connectionLimit = Number(process.env.DB_CONNECTION_LIMIT || 10);
+if (!Number.isInteger(port) || port < 1 || port > 65535) {
+  throw new Error('DB_PORT deve ser uma porta TCP válida.');
+}
+if (!Number.isInteger(connectionLimit) || connectionLimit < 1) {
+  throw new Error('DB_CONNECTION_LIMIT deve ser um inteiro positivo.');
+}
+
+const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
-  user: process.env.DB_USER || 'root',
+  port,
+  user: process.env.DB_USER,
   password: process.env.DB_PASSWORD || '',
-  port: parseInt(process.env.DB_PORT || '3306', 10),
-  database: process.env.DB_NAME || 'NEURAL',
+  database: process.env.DB_NAME,
+  timezone: 'Z',
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  connectionLimit,
+  queueLimit: 0,
+  decimalNumbers: true
+});
+
+const requiredTables = [
+  'empresas', 'usuarios', 'assinaturas', 'clientes', 'fornecedores', 'funcionarios',
+  'servicos', 'itens_estoque', 'ordens_servico', 'orcamentos', 'itens_os',
+  'reservas_estoque', 'movimentacoes_estoque', 'alertas_estoque', 'minutas_compra',
+  'itens_minuta_compra', 'audit_logs', 'notification_outbox', 'comentarios_os',
+  'notificacoes', 'os_historico_status'
+];
+
+const requiredColumns = {
+  empresas: ['nome_juridico', 'logradouro', 'numero', 'modelo_estoque'],
+  usuarios: ['login_normalizado', 'perfil', 'senha_hash'],
+  clientes: ['cpf_cnpj', 'rg', 'ponto_referencia'],
+  fornecedores: ['produtos'],
+  funcionarios: ['telefone_normalizado', 'cargo', 'salario_fixo'],
+  itens_estoque: ['categoria'],
+  ordens_servico: [
+    'tipo_documento', 'prioridade', 'id_tecnico_responsavel', 'prazo_garantia_dias',
+    'condicoes_equipamento', 'acessorios', 'observacoes_tecnico', 'local_atendimento',
+    'data_aprovacao', 'data_agendamento', 'data_fim_garantia', 'termo_garantia',
+    'assinatura_cliente_url', 'data_assinatura'
+  ]
 };
 
-class Database {
-  constructor() {
-    this.pool = null;
-    this.isMysqlConnected = false;
-    this.reset();
-    this.ready = this.initMySQL();
-  }
+async function initialize() {
+  try {
+    await pool.query('SELECT 1');
+    const [existingTables] = await pool.execute(
+      `SELECT TABLE_NAME
+         FROM information_schema.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME IN (${requiredTables.map(() => '?').join(', ')})`,
+      requiredTables
+    );
+    const existingTableSet = new Set(existingTables.map(row => row.TABLE_NAME));
+    const missingTables = requiredTables.filter(table => !existingTableSet.has(table));
 
-  async initMySQL() {
-    if (!mysql) return;
-    try {
-      this.pool = mysql.createPool(mysqlConfig);
-      await this.pool.query('SELECT 1');
-      
-      // Initialize Schema
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS empresas (
-          id_empresa INT AUTO_INCREMENT PRIMARY KEY,
-          nome_juridico VARCHAR(255) NOT NULL,
-          cnpj VARCHAR(20) NOT NULL UNIQUE,
-          telefone VARCHAR(30),
-          email VARCHAR(255),
-          logradouro VARCHAR(255),
-          numero VARCHAR(20),
-          complemento VARCHAR(100),
-          bairro VARCHAR(100),
-          cidade VARCHAR(100),
-          uf VARCHAR(2),
-          cep VARCHAR(10),
-          horario VARCHAR(100),
-          logo TEXT,
-          plano VARCHAR(50) DEFAULT 'Prime',
-          proximo_numero_os INT DEFAULT 1,
-          ativo BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
+    const requiredColumnNames = Object.entries(requiredColumns)
+      .flatMap(([table, columns]) => columns.map(column => ({ table, column })));
+    const columnTables = Object.keys(requiredColumns);
+    const [existingColumns] = await pool.execute(
+      `SELECT TABLE_NAME, COLUMN_NAME
+         FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME IN (${columnTables.map(() => '?').join(', ')})`,
+      columnTables
+    );
+    const existingColumnSet = new Set(
+      existingColumns.map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`)
+    );
+    const missingColumns = requiredColumnNames
+      .filter(({ table, column }) => !existingColumnSet.has(`${table}.${column}`))
+      .map(({ table, column }) => `${table}.${column}`);
 
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS tecnicos (
-          id_tecnico INT AUTO_INCREMENT PRIMARY KEY,
-          id_empresa INT NOT NULL,
-          nome VARCHAR(255) NOT NULL,
-          login VARCHAR(100) NOT NULL,
-          cpf VARCHAR(20),
-          cargo VARCHAR(100) DEFAULT 'Técnico',
-          salario_fixo NUMERIC(10, 2) DEFAULT 0.00,
-          senha_hash VARCHAR(255) NOT NULL,
-          ativo BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          CONSTRAINT fk_tecnicos_empresa FOREIGN KEY (id_empresa) REFERENCES empresas (id_empresa) ON DELETE CASCADE,
-          CONSTRAINT uq_tecnicos_empresa_login UNIQUE (id_empresa, login)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS clientes (
-          id_cliente INT AUTO_INCREMENT PRIMARY KEY,
-          id_empresa INT NOT NULL,
-          codigo VARCHAR(50),
-          nome_completo VARCHAR(255) NOT NULL,
-          cpf_cnpj VARCHAR(20),
-          rg VARCHAR(30),
-          telefone VARCHAR(30),
-          email VARCHAR(255),
-          logradouro VARCHAR(255),
-          numero VARCHAR(20),
-          complemento VARCHAR(100),
-          bairro VARCHAR(100),
-          cidade VARCHAR(100),
-          uf VARCHAR(10),
-          cep VARCHAR(10),
-          ponto_referencia VARCHAR(255),
-          detalhes_geral TEXT,
-          ativo BOOLEAN DEFAULT TRUE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          CONSTRAINT fk_clientes_empresa FOREIGN KEY (id_empresa) REFERENCES empresas (id_empresa) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS pecas (
-          id_peca INT AUTO_INCREMENT PRIMARY KEY,
-          id_empresa INT NOT NULL,
-          nome_peca VARCHAR(255) NOT NULL,
-          categoria VARCHAR(100),
-          preco_custo_atual NUMERIC(10, 2) DEFAULT 0.00,
-          preco_venda NUMERIC(10, 2) DEFAULT 0.00,
-          quantidade_estoque INT DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          CONSTRAINT fk_pecas_empresa FOREIGN KEY (id_empresa) REFERENCES empresas (id_empresa) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS fornecedores (
-          id_fornecedor INT AUTO_INCREMENT PRIMARY KEY,
-          id_empresa INT NOT NULL,
-          nome_juridico VARCHAR(255) NOT NULL,
-          cnpj VARCHAR(20),
-          produtos TEXT,
-          telefone VARCHAR(30),
-          email VARCHAR(255),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          CONSTRAINT fk_fornecedores_empresa FOREIGN KEY (id_empresa) REFERENCES empresas (id_empresa) ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS os (
-          id_os INT AUTO_INCREMENT PRIMARY KEY,
-          id_empresa INT NOT NULL,
-          numero_os INT NOT NULL,
-          id_cliente INT NOT NULL,
-          tipo_documento VARCHAR(50) DEFAULT 'OS',
-          status VARCHAR(50) DEFAULT 'Aberta',
-          prioridade VARCHAR(50) DEFAULT 'Média',
-          equipamento_tipo VARCHAR(100),
-          marca VARCHAR(100),
-          modelo VARCHAR(100),
-          numero_serie VARCHAR(100),
-          relato_problema TEXT,
-          id_tecnico_responsavel INT,
-          prazo_garantia_dias INT DEFAULT 90,
-          valor_total NUMERIC(10, 2) DEFAULT 0.00,
-          valor_desconto NUMERIC(10, 2) DEFAULT 0.00,
-          valor_liquido NUMERIC(10, 2) DEFAULT 0.00,
-          data_abertura DATE,
-          data_conclusao DATE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          CONSTRAINT fk_os_empresa FOREIGN KEY (id_empresa) REFERENCES empresas (id_empresa) ON DELETE CASCADE,
-          CONSTRAINT fk_os_cliente FOREIGN KEY (id_cliente) REFERENCES clientes (id_cliente) ON DELETE RESTRICT,
-          CONSTRAINT fk_os_tecnico FOREIGN KEY (id_tecnico_responsavel) REFERENCES tecnicos (id_tecnico) ON DELETE SET NULL,
-          CONSTRAINT uq_os_empresa_numero UNIQUE (id_empresa, numero_os)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-      `);
-
-      this.isMysqlConnected = true;
-      console.log(`✅ Conectado com sucesso ao MySQL na base ${mysqlConfig.database}`);
-
-      await this.syncFromMySQL();
-    } catch (err) {
-      this.isMysqlConnected = false;
-      if (this.pool) {
-        await this.pool.end();
-        this.pool = null;
-      }
-      console.error(`Erro ao inicializar o MySQL (${err.message}).`);
-    }
-  }
-
-  async syncFromMySQL() {
-    if (!this.isMysqlConnected || !this.pool) return;
-    try {
-      const [empresasRows] = await this.pool.query('SELECT * FROM empresas');
-      if (empresasRows.length === 0) {
-        // Seed default records into MySQL
-        for (const emp of this.empresas) {
-          await this.saveToMySQL('empresas', emp);
-        }
-        for (const tec of this.tecnicos) {
-          await this.saveToMySQL('tecnicos', tec);
-        }
-        for (const cli of this.clientes) {
-          await this.saveToMySQL('clientes', cli);
-        }
-        for (const pec of this.pecas) {
-          await this.saveToMySQL('pecas', pec);
-        }
-        for (const forn of this.fornecedores) {
-          await this.saveToMySQL('fornecedores', forn);
-        }
-        for (const o of this.os) {
-          await this.saveToMySQL('os', o);
-        }
-      } else {
-        // Load existing MySQL rows into memory
-        const tables = ['empresas', 'tecnicos', 'clientes', 'pecas', 'fornecedores', 'os'];
-        for (const tbl of tables) {
-          const [rows] = await this.pool.query(`SELECT * FROM \`${tbl}\``);
-          this[tbl] = rows;
-          const pk = this.getPkName(tbl);
-          const maxId = rows.reduce((max, r) => Math.max(max, r[pk] || 0), 0);
-          this.seq[tbl] = Math.max(this.seq[tbl], maxId);
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao sincronizar com MySQL:', err);
-      throw err;
-    }
-  }
-
-  async saveToMySQL(table, row) {
-    if (!this.isMysqlConnected || !this.pool) return;
-    try {
-      const keys = Object.keys(row).filter(k => row[k] !== undefined);
-      const cols = keys.map(k => `\`${k}\``).join(', ');
-      const placeholders = keys.map(() => '?').join(', ');
-      const values = keys.map(k => row[k]);
-      const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${keys.map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ')}`;
-      await this.pool.query(sql, values);
-    } catch (err) {
-      console.error(`Erro ao salvar na tabela ${table} em MySQL:`, err);
-    }
-  }
-
-  async updateInMySQL(table, pkValue, patch) {
-    if (!this.isMysqlConnected || !this.pool) return;
-    try {
-      const pkName = this.getPkName(table);
-      const keys = Object.keys(patch).filter(k => patch[k] !== undefined);
-      if (keys.length === 0) return;
-      const setClause = keys.map(k => `\`${k}\` = ?`).join(', ');
-      const values = [...keys.map(k => patch[k]), pkValue];
-      const sql = `UPDATE \`${table}\` SET ${setClause} WHERE \`${pkName}\` = ?`;
-      await this.pool.query(sql, values);
-    } catch (err) {
-      console.error(`Erro ao atualizar na tabela ${table} em MySQL:`, err);
-    }
-  }
-
-  async deleteInMySQL(table, pkValue) {
-    if (!this.isMysqlConnected || !this.pool) return;
-    try {
-      const pkName = this.getPkName(table);
-      const sql = `DELETE FROM \`${table}\` WHERE \`${pkName}\` = ?`;
-      await this.pool.query(sql, [pkValue]);
-    } catch (err) {
-      console.error(`Erro ao deletar da tabela ${table} em MySQL:`, err);
-    }
-  }
-
-  reset() {
-    this.empresas = [];
-    this.tecnicos = [];
-    this.clientes = [];
-    this.pecas = [];
-    this.fornecedores = [];
-    this.os = [];
-    this.seq = {
-      empresas: 0,
-      tecnicos: 0,
-      clientes: 0,
-      pecas: 0,
-      fornecedores: 0,
-      os: 0
-    };
-    this.seedDefaults();
-  }
-
-  seedDefaults() {
-    const emp = this.insert('empresas', {
-      nome_juridico: 'Neural Tech Soluções LTDA',
-      cnpj: '12.345.678/0001-99',
-      telefone: '(11) 98888-7777',
-      email: 'contato@neuraltech.com.br',
-      logradouro: 'Av. Paulista',
-      numero: '1000',
-      complemento: 'Sala 402',
-      bairro: 'Bela Vista',
-      cidade: 'São Paulo',
-      uf: 'SP',
-      cep: '01310-100',
-      horario: '08:00 as 18:00',
-      plano: 'Prime',
-      proximo_numero_os: 68
-    });
-
-    const salt = bcrypt.genSaltSync(10);
-    const passHash = bcrypt.hashSync('123456', salt);
-
-    const adm = this.insert('tecnicos', {
-      id_empresa: emp.id_empresa,
-      nome: 'Carlos Eduardo',
-      login: 'admin',
-      cpf: '123.456.789-00',
-      cargo: 'Chefe de Oficina',
-      salario_fixo: 4500.00,
-      senha_hash: passHash
-    });
-
-    this.insert('tecnicos', {
-      id_empresa: emp.id_empresa,
-      nome: 'Marcos Vinicius',
-      login: 'marcos.tec',
-      cpf: '987.654.321-11',
-      cargo: 'Técnico Hardware',
-      salario_fixo: 3200.00,
-      senha_hash: passHash
-    });
-
-    const cli1 = this.insert('clientes', {
-      id_empresa: emp.id_empresa,
-      codigo: '6967',
-      nome_completo: 'Carl Johnson',
-      cpf_cnpj: '678.326.510-58',
-      rg: '767426594',
-      telefone: '40028922',
-      email: 'largatixaolimpica@gmail.com',
-      logradouro: 'Rua sem saida',
-      numero: '476',
-      complemento: '',
-      bairro: 'Ganton',
-      cidade: 'Los Santos',
-      uf: 'SA',
-      cep: '00000-000',
-      ponto_referencia: 'Após a ponte',
-      detalhes_geral: 'Mora no meio do gueto'
-    });
-
-    this.insert('clientes', {
-      id_empresa: emp.id_empresa,
-      codigo: '7001',
-      nome_completo: 'Lara Croft',
-      cpf_cnpj: '111.222.333-44',
-      rg: '987654321',
-      telefone: '(11) 97777-1111',
-      email: 'lara.croft@tomb.com',
-      logradouro: 'Mansão Croft',
-      numero: '01',
-      complemento: 'Lote 2',
-      bairro: 'Surrey',
-      cidade: 'Londres',
-      uf: 'SP',
-      cep: '01452-000',
-      ponto_referencia: 'Próximo ao museu',
-      detalhes_geral: 'Cliente preferencial'
-    });
-
-    this.insert('pecas', {
-      id_empresa: emp.id_empresa,
-      nome_peca: 'SSD NVMe 1TB Kingston',
-      categoria: 'Armazenamento',
-      preco_custo_atual: 250.00,
-      preco_venda: 420.00,
-      quantidade_estoque: 15
-    });
-
-    this.insert('pecas', {
-      id_empresa: emp.id_empresa,
-      nome_peca: 'Pasta Térmica Implastec',
-      categoria: 'Insumo',
-      preco_custo_atual: 15.00,
-      preco_venda: 45.00,
-      quantidade_estoque: 40
-    });
-
-    this.insert('fornecedores', {
-      id_empresa: emp.id_empresa,
-      nome_juridico: 'Kabum Distribuidora S.A.',
-      cnpj: '05.570.714/0001-59',
-      produtos: 'Peças de Hardware em Geral',
-      telefone: '(19) 2114-4400',
-      email: 'compras@kabum.com.br'
-    });
-
-    this.insert('os', {
-      id_empresa: emp.id_empresa,
-      numero_os: 7,
-      id_cliente: cli1.id_cliente,
-      tipo_documento: 'OS',
-      status: 'Em Execução',
-      prioridade: 'Alta',
-      equipamento_tipo: 'Console de Videogame',
-      marca: 'Sony',
-      modelo: 'PlayStation 5',
-      numero_serie: 'PS5-88392',
-      relato_problema: 'Aparelho desligando sozinho por superaquecimento',
-      id_tecnico_responsavel: adm.id_tecnico,
-      prazo_garantia_dias: 90,
-      valor_total: 350.00,
-      valor_desconto: 0.00,
-      valor_liquido: 350.00,
-      data_abertura: '2026-10-10'
-    });
-  }
-
-  getPkName(table) {
-    if (table === 'os') return 'id_os';
-    if (table === 'empresas') return 'id_empresa';
-    if (table === 'tecnicos') return 'id_tecnico';
-    if (table === 'clientes') return 'id_cliente';
-    if (table === 'pecas') return 'id_peca';
-    return 'id_fornecedor';
-  }
-
-  insert(table, data) {
-    this.seq[table]++;
-    const pkName = this.getPkName(table);
-    
-    const row = {
-      [pkName]: this.seq[table],
-      ativo: 1,
-      created_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      ...data
-    };
-
-    if (table === 'clientes' && !row.codigo) {
-      row.codigo = String(4000 + row.id_cliente);
+    if (missingTables.length || missingColumns.length) {
+      const problems = [
+        missingTables.length ? `tabelas ausentes: ${missingTables.join(', ')}` : null,
+        missingColumns.length ? `colunas ausentes: ${missingColumns.join(', ')}` : null
+      ].filter(Boolean).join('; ');
+      throw new Error(
+        `Schema incompatível na base "${process.env.DB_NAME}" (${problems}). ` +
+        'Use o schema plural do projeto e aplique as migrações em backend/src/db/migrations.'
+      );
     }
 
-    this[table].push(row);
-    this.saveToMySQL(table, row);
-    return row;
-  }
-
-  find(table, predicate) {
-    return this[table].filter(predicate);
-  }
-
-  findOne(table, predicate) {
-    return this[table].find(predicate);
-  }
-
-  update(table, pkValue, patch) {
-    const pkName = this.getPkName(table);
-    const index = this[table].findIndex(item => item[pkName] === pkValue);
-    if (index === -1) return null;
-
-    const updatedRow = {
-      ...this[table][index],
-      ...patch,
-      updated_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
-    };
-    this[table][index] = updatedRow;
-    this.updateInMySQL(table, pkValue, patch);
-    return updatedRow;
-  }
-
-  delete(table, pkValue) {
-    const pkName = this.getPkName(table);
-    const index = this[table].findIndex(item => item[pkName] === pkValue);
-    if (index === -1) return false;
-    this[table].splice(index, 1);
-    this.deleteInMySQL(table, pkValue);
-    return true;
+    console.log(`Conectado ao MySQL na base ${process.env.DB_NAME}.`);
+  } catch (error) {
+    await pool.end();
+    throw new Error(`Falha ao conectar ou validar o schema do MySQL: ${error.message}`, { cause: error });
   }
 }
 
-const dbInstance = new Database();
-module.exports = dbInstance;
+const ready = initialize();
+
+async function query(sql, values = []) {
+  await ready;
+  const [rows] = await pool.execute(sql, values);
+  return rows;
+}
+
+async function withTransaction(work) {
+  await ready;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await work(connection);
+    await connection.commit();
+    return result;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+module.exports = {
+  pool,
+  ready,
+  query,
+  withTransaction,
+  close: () => pool.end()
+};

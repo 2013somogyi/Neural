@@ -1,7 +1,10 @@
 const jwt = require('jsonwebtoken');
-const db = require('../db/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'nneural_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('Configure JWT_SECRET no ambiente antes de iniciar a API.');
+}
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -12,11 +15,23 @@ function authMiddleware(req, res, next) {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { id_tecnico, id_empresa, nome, login, cargo }
+    if (!decoded.id_usuario || !decoded.id_empresa || !decoded.perfil) {
+      return res.status(401).json({ message: 'Token inválido ou expirado.' });
+    }
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Token inválido ou expirado.' });
   }
 }
 
-module.exports = { authMiddleware, JWT_SECRET };
+function requireRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.perfil)) {
+      return res.status(403).json({ message: 'Você não tem permissão para esta operação.' });
+    }
+    next();
+  };
+}
+
+module.exports = { authMiddleware, requireRoles, JWT_SECRET };

@@ -1,37 +1,48 @@
 const express = require('express');
 const db = require('../db/database');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRoles } = require('../middleware/auth');
 
 const router = express.Router();
-router.use(authMiddleware);
+router.use(authMiddleware, requireRoles('Admin'));
 
-// GET /api/dashboard
-router.get('/', (req, res) => {
-  const empresa = db.findOne('empresas', e => e.id_empresa === req.user.id_empresa);
-  const osList = db.find('os', o => o.id_empresa === req.user.id_empresa);
-  const clientes = db.find('clientes', c => c.id_empresa === req.user.id_empresa && c.ativo);
-  const pecas = db.find('pecas', p => p.id_empresa === req.user.id_empresa);
-  const tecnicos = db.find('tecnicos', t => t.id_empresa === req.user.id_empresa && t.ativo);
+router.get('/', async (req, res) => {
+  const companyId = req.user.id_empresa;
+  const [companies, orders, clients, parts, technicians] = await Promise.all([
+    db.query(
+      `SELECT id_empresa, nome AS nome_juridico, cnpj_normalizado AS cnpj,
+              telefone_normalizado AS telefone, email, modelo_estoque
+         FROM empresas WHERE id_empresa = ? AND ativo = 1`,
+      [companyId]
+    ),
+    db.query(
+      `SELECT COUNT(*) AS qtdOS,
+              COALESCE(SUM(CASE WHEN status = 'Concluída' THEN valor_liquido ELSE 0 END), 0) AS faturamentoTotal,
+              COALESCE(SUM(CASE WHEN status = 'Concluída'
+                AND data_fim_garantia >= CURRENT_DATE THEN 1 ELSE 0 END), 0) AS garantiasAtivas
+         FROM ordens_servico
+        WHERE id_empresa = ? AND excluida_em IS NULL`,
+      [companyId]
+    ),
+    db.query('SELECT COUNT(*) AS totalClientes FROM clientes WHERE id_empresa = ? AND ativo = 1', [companyId]),
+    db.query('SELECT COUNT(*) AS totalPecas FROM itens_estoque WHERE id_empresa = ? AND ativo = 1', [companyId]),
+    db.query(
+      `SELECT COUNT(*) AS totalTecnicos
+         FROM funcionarios f
+         JOIN usuarios u ON u.id_empresa = f.id_empresa AND u.id_usuario = f.id_usuario
+        WHERE f.id_empresa = ? AND f.ativo = 1 AND u.ativo = 1 AND u.perfil = 'TECNICO'`,
+      [companyId]
+    )
+  ]);
 
-  const faturamentoTotal = osList.reduce((acc, o) => acc + (o.valor_liquido || 0), 0);
-  const qtdOS = osList.length;
-
-  const agora = Date.now();
-  const garantiasAtivas = osList.filter(o => {
-    if (o.status !== 'Concluída' || !o.data_conclusao) return false;
-    const dataConc = new Date(o.data_conclusao + 'T00:00:00').getTime();
-    const prazoMs = (o.prazo_garantia_dias || 0) * 24 * 60 * 60 * 1000;
-    return (dataConc + prazoMs) >= agora;
-  }).length;
-
+  if (!companies[0]) return res.status(404).json({ message: 'Empresa não encontrada.' });
   res.json({
-    empresa,
-    faturamentoTotal,
-    qtdOS,
-    garantiasAtivas,
-    totalClientes: clientes.length,
-    totalPecas: pecas.length,
-    totalTecnicos: tecnicos.length
+    empresa: companies[0],
+    faturamentoTotal: orders[0].faturamentoTotal,
+    qtdOS: orders[0].qtdOS,
+    garantiasAtivas: orders[0].garantiasAtivas,
+    totalClientes: clients[0].totalClientes,
+    totalPecas: parts[0].totalPecas,
+    totalTecnicos: technicians[0].totalTecnicos
   });
 });
 

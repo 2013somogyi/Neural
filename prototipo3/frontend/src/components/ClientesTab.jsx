@@ -1,11 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
+import { formatMoney } from '../utils/format';
+import { useAuth } from '../context/AuthContext';
+import { isValidBrazilianDocument, isValidBrazilianPhone, isValidEmail, maskBrazilianDocument, maskBrazilianPhone } from '../utils/validation';
+
+const clientFields = [
+  'nome_completo', 'cpf_cnpj', 'rg', 'telefone', 'email', 'logradouro',
+  'numero', 'complemento', 'bairro', 'cidade', 'uf', 'cep', 'ponto_referencia'
+];
 
 export function ClientesTab({ showToast }) {
+  const { user } = useAuth();
+  const canEdit = ['Admin', 'Tecnico'].includes(user?.perfil);
+  const canDelete = user?.perfil === 'Admin';
   const [clientes, setClientes] = useState([]);
   const [filtroTipo, setFiltroTipo] = useState('nome');
   const [busca, setBusca] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Modal states
   const [showNovoModal, setShowNovoModal] = useState(false);
@@ -15,6 +27,7 @@ export function ClientesTab({ showToast }) {
 
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [clienteHistData, setClienteHistData] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const [clienteForm, setClienteForm] = useState({
     nome_completo: '',
@@ -29,13 +42,13 @@ export function ClientesTab({ showToast }) {
     cidade: '',
     uf: '',
     cep: '',
-    ponto_referencia: '',
-    detalhes_geral: ''
+    ponto_referencia: ''
   });
 
   const loadClientes = async (term = '') => {
     try {
       setLoading(true);
+      setLoadError('');
       let url = '/clientes';
       if (term) {
         url += `?tipo=${filtroTipo}&busca=${encodeURIComponent(term)}`;
@@ -43,7 +56,7 @@ export function ClientesTab({ showToast }) {
       const data = await apiRequest(url);
       setClientes(data);
     } catch (err) {
-      showToast(err.message, 'error');
+      setLoadError(err.message || 'Não foi possível carregar os clientes.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +78,7 @@ export function ClientesTab({ showToast }) {
 
   const handleSaveNovo = async (e) => {
     e.preventDefault();
+    if (!validateCliente()) return;
     try {
       await apiRequest('/clientes', {
         method: 'POST',
@@ -80,6 +94,7 @@ export function ClientesTab({ showToast }) {
   };
 
   const resetNovoForm = () => {
+    setFormErrors({});
     setClienteForm({
       nome_completo: '',
       cpf_cnpj: '',
@@ -93,23 +108,30 @@ export function ClientesTab({ showToast }) {
       cidade: '',
       uf: '',
       cep: '',
-      ponto_referencia: '',
-      detalhes_geral: ''
+      ponto_referencia: ''
     });
   };
 
   const openEdicao = (c) => {
     setSelectedCliente(c);
-    setClienteForm({ ...c });
+    setFormErrors({});
+    setClienteForm({
+      ...c,
+      cpf_cnpj: maskBrazilianDocument(c.cpf_cnpj || ''),
+      telefone: maskBrazilianPhone(c.telefone || '')
+    });
     setShowEditModal(true);
   };
 
   const handleSaveEdicao = async (e) => {
     e.preventDefault();
+    if (!validateCliente()) return;
     try {
       await apiRequest(`/clientes/${selectedCliente.id_cliente}`, {
         method: 'PUT',
-        body: JSON.stringify(clienteForm)
+        body: JSON.stringify(Object.fromEntries(
+          clientFields.map(field => [field, clienteForm[field] || ''])
+        ))
       });
       showToast('Cliente atualizado com sucesso!');
       setShowEditModal(false);
@@ -117,6 +139,25 @@ export function ClientesTab({ showToast }) {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  };
+
+  const validateCliente = () => {
+    const errors = {};
+    if (!isValidBrazilianDocument(clienteForm.cpf_cnpj)) errors.cpf_cnpj = 'Informe um CPF ou CNPJ válido.';
+    if (!isValidBrazilianPhone(clienteForm.telefone)) errors.telefone = 'Informe um telefone com DDD válido.';
+    if (clienteForm.email && !isValidEmail(clienteForm.email)) errors.email = 'Informe um e-mail válido.';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const updateClientField = (field, value) => {
+    const maskedValue = field === 'cpf_cnpj'
+      ? maskBrazilianDocument(value)
+      : field === 'telefone'
+        ? maskBrazilianPhone(value)
+        : value;
+    setClienteForm(prev => ({ ...prev, [field]: maskedValue }));
+    if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const openHistorico = async (c) => {
@@ -153,9 +194,9 @@ export function ClientesTab({ showToast }) {
       <div className="bg-white p-4 rounded-2xl border-2 border-orange-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-black text-orange-600 uppercase tracking-wide">CLIENTE</h2>
-          <button onClick={() => { resetNovoForm(); setShowNovoModal(true); }} className="btn-dorfic text-xs px-4 py-2 flex items-center gap-2">
+          {canEdit && <button onClick={() => { resetNovoForm(); setShowNovoModal(true); }} className="btn-dorfic text-xs px-4 py-2 flex items-center gap-2">
             <i className="fa-solid fa-plus"></i> Novo Cliente
-          </button>
+          </button>}
         </div>
 
         <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
@@ -203,9 +244,25 @@ export function ClientesTab({ showToast }) {
                 <tr>
                   <td colSpan="6" className="p-4 text-center text-slate-500">Carregando clientes...</td>
                 </tr>
+              ) : loadError ? (
+                <tr>
+                  <td colSpan="6" className="p-4 text-center text-red-700">
+                    <span>{loadError}</span>
+                    <button type="button" onClick={() => loadClientes(busca)} className="ml-3 font-bold underline">
+                      Tentar novamente
+                    </button>
+                  </td>
+                </tr>
               ) : clientes.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-4 text-center text-slate-500">Nenhum cliente encontrado.</td>
+                  <td colSpan="6" className="p-4 text-center text-slate-500">
+                    {busca ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}
+                    {canEdit && !busca && (
+                      <button type="button" onClick={() => setShowNovoModal(true)} className="ml-2 font-bold text-orange-700 underline">
+                        Cadastrar primeiro cliente
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ) : (
                 clientes.map(c => (
@@ -223,13 +280,13 @@ export function ClientesTab({ showToast }) {
                       >
                         <i className="fa-solid fa-clock-rotate-left"></i>
                       </button>
-                      <button
-                        onClick={() => openEdicao(c)}
-                        className="text-orange-500 hover:text-orange-700 bg-orange-50 p-2 rounded-lg transition"
-                        title="Editar"
-                      >
-                        <i className="fa-solid fa-pen"></i>
-                      </button>
+                      {canEdit && <button
+                          onClick={() => openEdicao(c)}
+                          className="text-orange-500 hover:text-orange-700 bg-orange-50 p-2 rounded-lg transition"
+                          title="Editar"
+                        >
+                          <i className="fa-solid fa-pen"></i>
+                        </button>}
                     </td>
                   </tr>
                 ))
@@ -242,7 +299,7 @@ export function ClientesTab({ showToast }) {
       {/* Bottom stats bar */}
       <div className="bg-orange-100 border border-orange-200 rounded-xl p-3 flex justify-between items-center text-xs font-black text-orange-900">
         <span>CLIENTES: {String(clientes.length).padStart(3, '0')}</span>
-        <span>GARANTIAS VÁLIDAS: 014</span>
+        <span>REGISTROS ATIVOS: {clientes.length}</span>
       </div>
 
       {/* MODAL NOVO CLIENTE */}
@@ -267,60 +324,77 @@ export function ClientesTab({ showToast }) {
                   type="text"
                   className="input-dorfic w-full"
                   required
-                  placeholder="Ex: Carl Johnson"
+                  placeholder="Digite o nome completo"
+                  autoComplete="name"
                   value={clienteForm.nome_completo}
                   onChange={e => setClienteForm({ ...clienteForm, nome_completo: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">CPF/CNPJ:*</label>
+                <label htmlFor="cliente-cpf-cnpj" className="block font-bold text-slate-700 mb-1">CPF/CNPJ:*</label>
                 <input
+                  id="cliente-cpf-cnpj"
                   type="text"
                   className="input-dorfic w-full"
                   required
-                  placeholder="678.326.510-58"
+                  placeholder="Digite CPF ou CNPJ"
+                  autoComplete="off"
                   value={clienteForm.cpf_cnpj}
-                  onChange={e => setClienteForm({ ...clienteForm, cpf_cnpj: e.target.value })}
+                  aria-invalid={Boolean(formErrors.cpf_cnpj)}
+                  aria-describedby={formErrors.cpf_cnpj ? 'cliente-cpf-cnpj-error' : undefined}
+                  onInput={e => updateClientField('cpf_cnpj', e.currentTarget.value)}
                 />
+                {formErrors.cpf_cnpj && <p className="field-error" id="cliente-cpf-cnpj-error">{formErrors.cpf_cnpj}</p>}
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">RG:</label>
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="767426594"
+                  placeholder="Digite o RG (opcional)"
                   value={clienteForm.rg}
                   onChange={e => setClienteForm({ ...clienteForm, rg: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Telefone:*</label>
+                <label htmlFor="cliente-telefone" className="block font-bold text-slate-700 mb-1">Telefone:*</label>
                 <input
+                  id="cliente-telefone"
                   type="text"
                   className="input-dorfic w-full"
                   required
-                  placeholder="40028922"
+                  placeholder="(00) 00000-0000"
+                  autoComplete="tel"
                   value={clienteForm.telefone}
-                  onChange={e => setClienteForm({ ...clienteForm, telefone: e.target.value })}
+                  aria-invalid={Boolean(formErrors.telefone)}
+                  aria-describedby={formErrors.telefone ? 'cliente-telefone-error' : undefined}
+                  onInput={e => updateClientField('telefone', e.currentTarget.value)}
                 />
+                {formErrors.telefone && <p className="field-error" id="cliente-telefone-error">{formErrors.telefone}</p>}
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">E-mail:*</label>
+                <label htmlFor="cliente-email" className="block font-bold text-slate-700 mb-1">E-mail:*</label>
                 <input
-                  type="email"
+                  id="cliente-email"
+                  type="text"
+                  inputMode="email"
                   className="input-dorfic w-full"
-                  required
-                  placeholder="carljohnson@gmail.com"
+                  placeholder="Digite o e-mail (opcional)"
+                  autoComplete="email"
                   value={clienteForm.email}
-                  onChange={e => setClienteForm({ ...clienteForm, email: e.target.value })}
+                  aria-invalid={Boolean(formErrors.email)}
+                  aria-describedby={formErrors.email ? 'cliente-email-error' : undefined}
+                  onInput={e => updateClientField('email', e.currentTarget.value)}
                 />
+                {formErrors.email && <p className="field-error" id="cliente-email-error">{formErrors.email}</p>}
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Logradouro:</label>
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="Rua sem saída"
+                  placeholder="Digite o logradouro"
+                  autoComplete="address-line1"
                   value={clienteForm.logradouro}
                   onChange={e => setClienteForm({ ...clienteForm, logradouro: e.target.value })}
                 />
@@ -330,7 +404,7 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="476"
+                  placeholder="Número"
                   value={clienteForm.numero}
                   onChange={e => setClienteForm({ ...clienteForm, numero: e.target.value })}
                 />
@@ -340,7 +414,7 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="Casa"
+                  placeholder="Complemento (opcional)"
                   value={clienteForm.complemento}
                   onChange={e => setClienteForm({ ...clienteForm, complemento: e.target.value })}
                 />
@@ -350,7 +424,7 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="Ganton"
+                  placeholder="Digite o bairro"
                   value={clienteForm.bairro}
                   onChange={e => setClienteForm({ ...clienteForm, bairro: e.target.value })}
                 />
@@ -360,7 +434,7 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="Los Santos"
+                  placeholder="Digite a cidade"
                   value={clienteForm.cidade}
                   onChange={e => setClienteForm({ ...clienteForm, cidade: e.target.value })}
                 />
@@ -370,7 +444,7 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="San Andreas"
+                  placeholder="UF"
                   value={clienteForm.uf}
                   onChange={e => setClienteForm({ ...clienteForm, uf: e.target.value })}
                 />
@@ -390,21 +464,11 @@ export function ClientesTab({ showToast }) {
                 <input
                   type="text"
                   className="input-dorfic w-full"
-                  placeholder="Após a ponte"
+                  placeholder="Ponto de referência (opcional)"
                   value={clienteForm.ponto_referencia}
                   onChange={e => setClienteForm({ ...clienteForm, ponto_referencia: e.target.value })}
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block font-bold text-slate-700 mb-1">Detalhes Geral:</label>
-                <textarea
-                  className="input-dorfic w-full h-16"
-                  placeholder="Mora no meio do gueto"
-                  value={clienteForm.detalhes_geral}
-                  onChange={e => setClienteForm({ ...clienteForm, detalhes_geral: e.target.value })}
-                ></textarea>
-              </div>
-
               <div className="md:col-span-2 pt-4 flex justify-end gap-3 border-t border-orange-100">
                 <button type="button" onClick={() => setShowNovoModal(false)} className="btn-dorfic-secondary px-6 py-2">
                   Cancelar
@@ -445,14 +509,18 @@ export function ClientesTab({ showToast }) {
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">CPF/CNPJ:*</label>
+                <label htmlFor="cliente-edit-cpf-cnpj" className="block font-bold text-slate-700 mb-1">CPF/CNPJ:*</label>
                 <input
+                  id="cliente-edit-cpf-cnpj"
                   type="text"
                   className="input-dorfic w-full"
                   required
                   value={clienteForm.cpf_cnpj}
-                  onChange={e => setClienteForm({ ...clienteForm, cpf_cnpj: e.target.value })}
+                  aria-invalid={Boolean(formErrors.cpf_cnpj)}
+                  aria-describedby={formErrors.cpf_cnpj ? 'cliente-edit-cpf-cnpj-error' : undefined}
+                  onInput={e => updateClientField('cpf_cnpj', e.currentTarget.value)}
                 />
+                {formErrors.cpf_cnpj && <p className="field-error" id="cliente-edit-cpf-cnpj-error">{formErrors.cpf_cnpj}</p>}
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">RG:</label>
@@ -464,34 +532,43 @@ export function ClientesTab({ showToast }) {
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Telefone:*</label>
+                <label htmlFor="cliente-edit-telefone" className="block font-bold text-slate-700 mb-1">Telefone:*</label>
                 <input
+                  id="cliente-edit-telefone"
                   type="text"
                   className="input-dorfic w-full"
                   required
                   value={clienteForm.telefone}
-                  onChange={e => setClienteForm({ ...clienteForm, telefone: e.target.value })}
+                  aria-invalid={Boolean(formErrors.telefone)}
+                  aria-describedby={formErrors.telefone ? 'cliente-edit-telefone-error' : undefined}
+                  onInput={e => updateClientField('telefone', e.currentTarget.value)}
                 />
+                {formErrors.telefone && <p className="field-error" id="cliente-edit-telefone-error">{formErrors.telefone}</p>}
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">E-mail:*</label>
+                <label htmlFor="cliente-edit-email" className="block font-bold text-slate-700 mb-1">E-mail:*</label>
                 <input
-                  type="email"
+                  id="cliente-edit-email"
+                  type="text"
+                  inputMode="email"
                   className="input-dorfic w-full"
                   required
                   value={clienteForm.email}
-                  onChange={e => setClienteForm({ ...clienteForm, email: e.target.value })}
+                  aria-invalid={Boolean(formErrors.email)}
+                  aria-describedby={formErrors.email ? 'cliente-edit-email-error' : undefined}
+                  onInput={e => updateClientField('email', e.currentTarget.value)}
                 />
+                {formErrors.email && <p className="field-error" id="cliente-edit-email-error">{formErrors.email}</p>}
               </div>
 
               <div className="md:col-span-2 pt-4 flex justify-between gap-3 border-t border-orange-100">
-                <button
+                {canDelete && <button
                   type="button"
                   onClick={handleConfirmDelete}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded-xl text-xs shadow"
                 >
                   Deletar
-                </button>
+                </button>}
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowEditModal(false)} className="btn-dorfic-secondary px-6 py-2">
                     Cancelar
@@ -562,7 +639,7 @@ export function ClientesTab({ showToast }) {
                     <div className="p-2 bg-white">
                       <p><strong>Equip:</strong> {os.marca} {os.modelo}</p>
                       <p><strong>Problema:</strong> {os.relato_problema}</p>
-                      <p className="mt-1 font-bold">Valor: R$ {(os.valor_liquido || 0).toFixed(2)}</p>
+                      <p className="mt-1 font-bold">Valor: R$ {formatMoney(os.valor_liquido)}</p>
                     </div>
                   </div>
                 ))

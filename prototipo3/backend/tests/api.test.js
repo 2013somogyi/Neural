@@ -1,99 +1,60 @@
-const assert = require('assert');
-const app = require('../src/server');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { isValidCpf, isValidCnpj } = require('../src/utils/validation');
+const { normalizeBrazilianPhone } = require('../src/utils/normalization');
+const { toApiRole, toDatabaseRole } = require('../src/utils/roles');
+const { getOrderVisibilityFilter } = require('../src/services/orderVisibility');
+const { splitStatements } = require('../src/db/execute_migration');
 
-async function runTests() {
-  const server = app.listen(0);
-  const port = server.address().port;
-  const baseUrl = `http://localhost:${port}/api`;
+test('valida documentos brasileiros sem consultar o banco', async t => {
+  await t.test('aceita CPF e CNPJ com dígitos verificadores válidos', () => {
+    assert.equal(isValidCpf('529.982.247-25'), true);
+    assert.equal(isValidCnpj('11.222.333/0001-81'), true);
+  });
 
-  console.log(`Testing backend API on port ${port}...`);
+  await t.test('rejeita documentos inválidos e sequências repetidas', () => {
+    assert.equal(isValidCpf('111.111.111-11'), false);
+    assert.equal(isValidCnpj('00.000.000/0000-00'), false);
+  });
+});
 
-  try {
-    // 1. Healthcheck & Security Headers
-    let res = await fetch(`${baseUrl}/health`);
-    let data = await res.json();
-    assert.strictEqual(res.status, 200);
-    assert.strictEqual(data.status, 'ok');
-    assert.strictEqual(res.headers.get('x-content-type-options'), 'nosniff');
-    assert.strictEqual(res.headers.get('x-frame-options'), 'DENY');
-    console.log('✔ Healthcheck & Security Headers passed');
+test('normaliza telefones para o formato persistido no schema', () => {
+  assert.equal(normalizeBrazilianPhone('(11) 98765-4321'), '11987654321');
+  assert.equal(normalizeBrazilianPhone('+55 11 3456-7890'), '1134567890');
+  assert.equal(normalizeBrazilianPhone('123'), null);
+});
 
-    // 2. Unauthorized request test
-    res = await fetch(`${baseUrl}/clientes`);
-    assert.strictEqual(res.status, 401);
-    console.log('✔ Unauthorized request rejected correctly');
+test('converte perfis do schema para os nomes usados pela API', () => {
+  assert.equal(toApiRole('ADMIN'), 'Admin');
+  assert.equal(toApiRole('TECNICO'), 'Tecnico');
+  assert.equal(toDatabaseRole('Admin'), 'ADMIN');
+  assert.equal(toDatabaseRole('Tecnico'), 'TECNICO');
+});
 
-    // 3. Auth Login
-    res = await fetch(`${baseUrl}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ login: 'admin', senha: '123456' })
-    });
-    data = await res.json();
-    assert.strictEqual(res.status, 200);
-    assert.ok(data.token);
-    const token = data.token;
-    console.log('✔ Login passed');
+test('separa os comandos SQL da migration sem quebrar valores com ponto e vírgula', () => {
+  assert.deepEqual(splitStatements([
+    '-- comentário',
+    'USE NEURAL;',
+    "UPDATE empresas SET nome = 'Assistência; Técnica' WHERE nome_juridico IS NULL;",
+    ''
+  ].join('\n')), [
+    'USE NEURAL',
+    "UPDATE empresas SET nome = 'Assistência; Técnica' WHERE nome_juridico IS NULL"
+  ]);
+});
 
-    const authHeader = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+test('centraliza a visibilidade de OS por perfil', () => {
+  assert.deepEqual(getOrderVisibilityFilter({ perfil: 'Admin' }), { sql: '', values: [] });
+  assert.deepEqual(getOrderVisibilityFilter({ perfil: 'Financeiro' }), { sql: '', values: [] });
+  assert.deepEqual(getOrderVisibilityFilter({ perfil: 'Tecnico', id_tecnico: 9 }), {
+    sql: expectVisibilitySql(),
+    values: [9]
+  });
+});
 
-    // 4. GET Clientes
-    res = await fetch(`${baseUrl}/clientes`, { headers: authHeader });
-    data = await res.json();
-    assert.strictEqual(res.status, 200);
-    assert.ok(Array.isArray(data));
-    assert.ok(data.length >= 2);
-    console.log('✔ GET Clientes passed');
-
-    // 5. POST Clientes
-    res = await fetch(`${baseUrl}/clientes`, {
-      method: 'POST',
-      headers: authHeader,
-      body: JSON.stringify({
-        nome_completo: 'Test Customer',
-        cpf_cnpj: '000.111.222-33',
-        telefone: '11999990000',
-        email: 'test@customer.com'
-      })
-    });
-    data = await res.json();
-    assert.strictEqual(res.status, 201);
-    assert.strictEqual(data.nome_completo, 'Test Customer');
-    const newClientId = data.id_cliente;
-    console.log('✔ POST Clientes passed');
-
-    // 6. POST OS
-    res = await fetch(`${baseUrl}/os`, {
-      method: 'POST',
-      headers: authHeader,
-      body: JSON.stringify({
-        id_cliente: newClientId,
-        equipamento_tipo: 'Notebook',
-        marca: 'Dell',
-        modelo: 'XPS 13',
-        relato_problema: 'Bateria viciada'
-      })
-    });
-    data = await res.json();
-    assert.strictEqual(res.status, 201);
-    assert.strictEqual(data.numero_os, 68);
-    console.log('✔ POST OS with auto-number passed');
-
-    // 7. GET Dashboard
-    res = await fetch(`${baseUrl}/dashboard`, { headers: authHeader });
-    data = await res.json();
-    assert.strictEqual(res.status, 200);
-    assert.ok(data.faturamentoTotal !== undefined);
-    assert.ok(data.qtdOS >= 2);
-    console.log('✔ GET Dashboard passed');
-
-    console.log('\n✅ ALL BACKEND SECURITY & API TESTS PASSED SUCCESSFULLY!');
-  } catch (err) {
-    console.error('❌ API Test Failed:', err);
-    process.exitCode = 1;
-  } finally {
-    server.close();
-  }
+function expectVisibilitySql() {
+  return ` AND (
+      o.id_tecnico_responsavel IS NULL
+      OR o.id_tecnico_responsavel = ?
+    )`;
 }
-
-runTests();

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export function LoginView({ onNavigate, showToast }) {
-  const [loginUser, setLoginUser] = useState('admin');
-  const [senha, setSenha] = useState('123456');
+  const [loginUser, setLoginUser] = useState('');
+  const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
@@ -38,7 +38,8 @@ export function LoginView({ onNavigate, showToast }) {
             <input
               type="text"
               className="input-dorfic w-full"
-              placeholder="Seu login global ou email"
+              autoComplete="username"
+              placeholder="Digite seu login"
               value={loginUser}
               onChange={e => setLoginUser(e.target.value)}
               required
@@ -49,7 +50,8 @@ export function LoginView({ onNavigate, showToast }) {
             <input
               type="password"
               className="input-dorfic w-full"
-              placeholder="••••••••"
+              autoComplete="current-password"
+              placeholder="Digite sua senha"
               value={senha}
               onChange={e => setSenha(e.target.value)}
               required
@@ -85,7 +87,7 @@ export function LoginView({ onNavigate, showToast }) {
         <div className="mt-6 text-center text-sm border-t border-orange-100 pt-4">
           Ainda não tem conta?{' '}
           <button onClick={() => onNavigate('signup')} className="text-orange-600 font-bold hover:underline">
-            Sing up
+          Cadastrar
           </button>
         </div>
       </div>

@@ -1,59 +1,47 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { subscriptionPlans } from '../utils/subscriptionPlans';
 
-export function SignupView({ onNavigate, showToast }) {
-  const [code, setCode] = useState('987654');
-
-  const handleVerification = (e) => {
-    e.preventDefault();
-    if (code.trim() === '987654' || code.length === 6) {
-      showToast('Código verificado com sucesso!');
-      onNavigate('checkout');
-    } else {
-      showToast('Código de verificação inválido.', 'error');
-    }
-  };
-
+export function SignupView({ onNavigate, onChoosePlan }) {
   return (
-    <section className="flex-grow flex items-center justify-center p-6 bg-slate-100 min-h-screen">
-      <div className="bg-dorfic-card w-full max-w-md p-8 text-center">
-        <div className="w-16 h-16 bg-dorfic-gradient rounded-2xl flex items-center justify-center text-white text-3xl font-black mx-auto mb-3 shadow-lg">
-          N
+    <section className="signup-page">
+      <div className="signup-content">
+        <div className="signup-heading">
+          <p className="landing-eyebrow">Comece com o plano ideal</p>
+          <h1>Escolha seu plano</h1>
+          <p>O pagamento é simulado nesta etapa. Depois da confirmação, você cadastra sua empresa.</p>
         </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Sing up</h2>
-        <p className="text-slate-600 text-sm mb-4">Enviamos um código de verificação para:</p>
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 font-mono text-xs text-orange-800 mb-6">
-          sei***a0@gmail.com
+        <div className="signup-plan-grid">
+          {subscriptionPlans.map(plan => (
+            <article className={`signup-plan-card${plan.featured ? ' signup-plan-featured' : ''}`} key={plan.id}>
+              {plan.featured && <span className="landing-plan-badge">Mais escolhido</span>}
+              <h2>{plan.name}</h2>
+              <p>{plan.description}</p>
+              <strong className="signup-plan-price">{plan.priceLabel}<span>/mês</span></strong>
+              <ul>
+                {plan.features.map(feature => (
+                  <li className={feature.includes('bloqueadas') ? 'landing-plan-locked' : ''} key={feature}>
+                    <i className={`fa-solid ${feature.includes('bloqueadas') ? 'fa-lock' : 'fa-check'}`} aria-hidden="true"></i>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className={plan.featured ? 'btn-dorfic signup-plan-action' : 'btn-dorfic-secondary signup-plan-action'} onClick={() => onChoosePlan(plan.id)}>
+                Continuar para pagamento
+              </button>
+            </article>
+          ))}
         </div>
-
-        <form onSubmit={handleVerification} className="space-y-4">
-          <div className="text-left">
-            <label className="block text-sm font-bold text-slate-700 mb-1">Código:</label>
-            <input
-              type="text"
-              className="input-dorfic w-full text-center text-xl tracking-widest font-mono"
-              placeholder="123456"
-              maxLength="6"
-              value={code}
-              onChange={e => setCode(e.target.value)}
-              required
-            />
-          </div>
-          <button type="submit" className="btn-dorfic w-full py-3 text-base">
-            Verifica
-          </button>
-        </form>
-
-        <div className="mt-6 flex justify-between items-center text-xs border-t border-orange-100 pt-4">
-          <button onClick={() => onNavigate('login')} className="text-slate-500 hover:text-orange-600 font-semibold">
-            Log in
-          </button>
-          <button
-            onClick={() => alert('Suporte N Neural acionado! Aguarde um instante.')}
-            className="text-orange-600 font-bold flex items-center gap-1"
-          >
-            <i className="fa-solid fa-headset"></i> Falar com o suporte
-          </button>
+        <div className="signup-footer-links">
+          <span>Já tem conta?</span>
+          <button onClick={() => onNavigate('login')} className="font-bold text-orange-700 hover:underline">Entrar</button>
         </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('landing')}
+          className="signup-back-link"
+        >
+          Voltar para a página inicial
+        </button>
       </div>
     </section>
   );

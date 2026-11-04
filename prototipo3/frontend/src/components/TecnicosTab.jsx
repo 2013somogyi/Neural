@@ -1,28 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../api/client';
+import { formatMoney } from '../utils/format';
+import { formatCurrencyBRL, isValidBrazilianPhone, isValidEmail, maskBrazilianPhone, maskCurrencyBRL, parseCurrencyBRL } from '../utils/validation';
 
 export function TecnicosTab({ showToast }) {
   const [tecnicos, setTecnicos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [selectedTec, setSelectedTec] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const [form, setForm] = useState({
     nome: '',
     login: '',
-    cpf: '',
-    cargo: 'Técnico Hardware',
-    salario_fixo: 0,
+    email: '',
+    telefone: '',
+    cargo: '',
+    salario_fixo: '',
     senha: ''
   });
 
   const loadTecnicos = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const data = await apiRequest('/tecnicos');
       setTecnicos(data);
     } catch (err) {
-      showToast(err.message, 'error');
+      setLoadError(err.message || 'Não foi possível carregar a equipe.');
     } finally {
       setLoading(false);
     }
@@ -34,12 +40,14 @@ export function TecnicosTab({ showToast }) {
 
   const openNovo = () => {
     setSelectedTec(null);
+    setFormErrors({});
     setForm({
       nome: '',
       login: '',
-      cpf: '',
-      cargo: 'Técnico Hardware',
-      salario_fixo: 0,
+      email: '',
+      telefone: '',
+      cargo: '',
+      salario_fixo: '',
       senha: ''
     });
     setShowModal(true);
@@ -47,12 +55,14 @@ export function TecnicosTab({ showToast }) {
 
   const openEdicao = (t) => {
     setSelectedTec(t);
+    setFormErrors({});
     setForm({
       nome: t.nome,
       login: t.login,
-      cpf: t.cpf || '',
+      email: t.email || '',
+      telefone: t.telefone || '',
       cargo: t.cargo || '',
-      salario_fixo: t.salario_fixo || 0,
+      salario_fixo: t.salario_fixo === null || t.salario_fixo === undefined ? '' : formatCurrencyBRL(t.salario_fixo),
       senha: ''
     });
     setShowModal(true);
@@ -60,17 +70,27 @@ export function TecnicosTab({ showToast }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const errors = {};
+    if (!isValidEmail(form.email)) errors.email = 'Informe um e-mail válido.';
+    if (form.telefone && !isValidBrazilianPhone(form.telefone)) errors.telefone = 'Informe um telefone com DDD válido.';
+    setFormErrors(errors);
+    if (Object.keys(errors).length) return;
     try {
+      const payload = {
+        ...form,
+        salario_fixo: form.salario_fixo ? parseCurrencyBRL(form.salario_fixo) : null
+      };
+      if (selectedTec && !payload.senha) delete payload.senha;
       if (selectedTec) {
         await apiRequest(`/tecnicos/${selectedTec.id_tecnico}`, {
           method: 'PUT',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Técnico atualizado com sucesso!');
       } else {
         await apiRequest('/tecnicos', {
           method: 'POST',
-          body: JSON.stringify(form)
+          body: JSON.stringify(payload)
         });
         showToast('Técnico cadastrado com sucesso!');
       }
@@ -79,6 +99,16 @@ export function TecnicosTab({ showToast }) {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  };
+
+  const updateFormField = (field, value) => {
+    const maskedValue = field === 'telefone'
+      ? maskBrazilianPhone(value)
+      : field === 'salario_fixo'
+        ? maskCurrencyBRL(value)
+        : value;
+    setForm(prev => ({ ...prev, [field]: maskedValue }));
+    if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const handleDelete = async () => {
@@ -103,6 +133,14 @@ export function TecnicosTab({ showToast }) {
       </div>
 
       <div className="bg-white rounded-2xl border-2 border-orange-100 shadow-sm overflow-hidden">
+        {loadError && (
+          <div role="alert" className="flex items-center justify-between gap-4 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <span>{loadError}</span>
+            <button type="button" onClick={loadTecnicos} className="btn-dorfic-secondary shrink-0 px-3 py-2">
+              Tentar novamente
+            </button>
+          </div>
+        )}
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-orange-50 text-orange-900 font-extrabold uppercase border-b border-orange-200">
             <tr>
@@ -119,6 +157,10 @@ export function TecnicosTab({ showToast }) {
               <tr>
                 <td colSpan="6" className="p-4 text-center text-slate-500">Carregando técnicos...</td>
               </tr>
+            ) : loadError ? (
+              <tr>
+                <td colSpan="6" className="p-4 text-center text-red-700">Não foi possível carregar os técnicos.</td>
+              </tr>
             ) : tecnicos.length === 0 ? (
               <tr>
                 <td colSpan="6" className="p-4 text-center text-slate-500">Nenhum técnico cadastrado.</td>
@@ -130,7 +172,7 @@ export function TecnicosTab({ showToast }) {
                   <td className="p-3 font-bold text-slate-800">{t.nome}</td>
                   <td className="p-3 text-orange-600 font-mono text-xs">{t.login}</td>
                   <td className="p-3">{t.cargo}</td>
-                  <td className="p-3">R$ {(t.salario_fixo || 0).toFixed(2)}</td>
+                  <td className="sensitive-value p-3">R$ {formatMoney(t.salario_fixo)}</td>
                   <td className="p-3 text-center">
                     <button onClick={() => openEdicao(t)} className="text-slate-400 hover:text-orange-600">
                       <i className="fa-solid fa-pen"></i>
@@ -160,6 +202,8 @@ export function TecnicosTab({ showToast }) {
                   type="text"
                   className="input-dorfic w-full"
                   required
+                  autoComplete="name"
+                  placeholder="Digite o nome completo"
                   value={form.nome}
                   onChange={e => setForm({ ...form, nome: e.target.value })}
                 />
@@ -171,19 +215,44 @@ export function TecnicosTab({ showToast }) {
                   type="text"
                   className="input-dorfic w-full"
                   required
+                  autoComplete="username"
+                  placeholder="Digite o login"
                   value={form.login}
                   onChange={e => setForm({ ...form, login: e.target.value })}
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">CPF:</label>
+                <label htmlFor="tecnico-email" className="block font-bold text-slate-700 mb-1">E-mail:*</label>
                 <input
+                  id="tecnico-email"
+                  type="text"
+                  inputMode="email"
+                  className="input-dorfic w-full"
+                  required
+                  autoComplete="email"
+                  value={form.email}
+                  aria-invalid={Boolean(formErrors.email)}
+                  aria-describedby={formErrors.email ? 'tecnico-email-error' : undefined}
+                  onInput={e => updateFormField('email', e.currentTarget.value)}
+                />
+                {formErrors.email && <p className="field-error" id="tecnico-email-error">{formErrors.email}</p>}
+              </div>
+
+              <div>
+                <label htmlFor="tecnico-telefone" className="block font-bold text-slate-700 mb-1">Telefone:</label>
+                <input
+                  id="tecnico-telefone"
                   type="text"
                   className="input-dorfic w-full"
-                  value={form.cpf}
-                  onChange={e => setForm({ ...form, cpf: e.target.value })}
+                  autoComplete="tel"
+                  placeholder="(00) 00000-0000"
+                  value={form.telefone}
+                  aria-invalid={Boolean(formErrors.telefone)}
+                  aria-describedby={formErrors.telefone ? 'tecnico-telefone-error' : undefined}
+                  onInput={e => updateFormField('telefone', e.currentTarget.value)}
                 />
+                {formErrors.telefone && <p className="field-error" id="tecnico-telefone-error">{formErrors.telefone}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -197,13 +266,15 @@ export function TecnicosTab({ showToast }) {
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Salário Fixo (R$):</label>
+                  <label htmlFor="tecnico-salario" className="block font-bold text-slate-700 mb-1">Salário Fixo (R$):</label>
                   <input
-                    type="number"
-                    step="0.01"
+                    id="tecnico-salario"
+                    type="text"
+                    inputMode="decimal"
                     className="input-dorfic w-full"
                     value={form.salario_fixo}
-                    onChange={e => setForm({ ...form, salario_fixo: e.target.value })}
+                    aria-label="Salário fixo em reais"
+                    onInput={e => updateFormField('salario_fixo', e.currentTarget.value)}
                   />
                 </div>
               </div>
@@ -216,6 +287,9 @@ export function TecnicosTab({ showToast }) {
                   type="password"
                   className="input-dorfic w-full"
                   required={!selectedTec}
+                  autoComplete={selectedTec ? 'new-password' : 'new-password'}
+                  minLength={8}
+                  placeholder={selectedTec ? 'Deixe em branco para manter' : 'Mínimo de 8 caracteres'}
                   value={form.senha}
                   onChange={e => setForm({ ...form, senha: e.target.value })}
                 />
