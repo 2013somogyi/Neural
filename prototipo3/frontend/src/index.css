@@ -274,7 +274,6 @@ html {
   padding: clamp(3.75rem, 8vw, 7rem) 0;
 }
 
-.landing-hero-copy { position: relative; z-index: 1; }
 .landing-eyebrow {
   display: flex;
   align-items: center;
@@ -463,7 +462,6 @@ html {
 .landing-plan-billing { margin: 0.25rem 0 1.1rem; color: var(--text-secondary); font-size: 0.72rem; }
 .landing-plan-card ul { display: grid; gap: 0.8rem; margin: 0 0 1.5rem; padding: 1rem 0 0; border-top: 1px solid var(--border-subtle); list-style: none; }
 .landing-plan-card li { display: flex; align-items: flex-start; gap: 0.55rem; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5; }
-.landing-plan-card li i { margin-top: 0.2rem; color: #338568; font-size: 0.75rem; }
 .landing-plan-cta { width: 100%; min-height: 2.9rem; margin-top: auto; }
 .landing-pricing-note { margin: 1.3rem 0 0; color: var(--text-secondary); font-size: 0.76rem; text-align: center; }
 
@@ -790,7 +788,6 @@ html {
 .landing-light .landing-plan-price { color: #b54200; }
 .landing-light .landing-plan-price span { color: #64748b; }
 .landing-light .landing-plan-card ul { border-color: #f0c5a9; }
-.landing-light .landing-plan-card li i { color: #338568; }
 .landing-light .landing-plan-locked { color: #64748b !important; }
 .landing-light .landing-plan-locked i { color: #b54200 !important; }
 .landing-light .landing-contact { border-color: #f0c5a9; background: linear-gradient(120deg, #fff2e8, #fffaf7 65%, #ffe6d4); }

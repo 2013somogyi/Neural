@@ -1,0 +1,27 @@
+.barra {
+  padding: 8px 15px;
+  background-color: #333333;
+  color: #ffffff;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.barra button {
+  background-color: #555555;
+  color: #ffffff;
+  border: 1px solid #777777;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.barra button:hover {
+  background-color: #ff6b00;
+  border-color: #ff6b00;
+}
+
+.conteudo {
+  min-height: calc(100vh - 41px);
+}

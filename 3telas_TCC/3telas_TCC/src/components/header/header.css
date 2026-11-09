@@ -1,0 +1,61 @@
+.navbar {
+  position: sticky;   /* header fica fixo no topo ao rolar */
+  top: 0;
+  z-index: 50;
+}
+
+.inicioHeader {
+  background-color: #ffffff;
+  border-bottom: 2px solid #ffe2d1;
+}
+
+.inicioHeaderConteudo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1180px;   /* mesmo valor do hero */
+  margin: 0 auto;      /* centraliza */
+  padding: 15px 1.5rem; /* mesmo padding lateral do hero */
+}
+
+/* LOGO NEURAL */
+.inicioAreaLogo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.Logo {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+}
+
+.inicioAreaLogo span {
+  font-size: 24px;
+  font-weight: 900;
+  color: #ff6b00;
+}
+
+/* BOTÕES DO CABEÇALHO */
+.inicioBotoesTopo {
+  display: flex;
+  gap: 10px;
+}
+
+.btnLogin:hover {
+  background-color: #ffe2d1;
+}
+
+.btnSignup:hover {
+  background: linear-gradient(180deg, #ee5100 0%, #d94100 100%);
+}

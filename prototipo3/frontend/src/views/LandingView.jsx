@@ -119,6 +119,7 @@ export function LandingView({ onNavigate, onChoosePlan }) {
             <h2>O que você precisa para cuidar do negócio</h2>
             <p>Menos tarefas espalhadas. Mais tempo para atender bem e fazer sua empresa avançar.</p>
           </div>
+
           <div className="landing-benefit-grid">
             {benefits.map((benefit, index) => (
               <article className="landing-benefit-card" key={benefit.title}>
@@ -137,25 +138,27 @@ export function LandingView({ onNavigate, onChoosePlan }) {
             <h2>Escolha como quer avançar</h2>
             <p>Comece pelo essencial e encontre o formato ideal para a sua operação.</p>
           </div>
+
           <div className="landing-plan-grid landing-plan-grid-two">
+            
             {subscriptionPlans.map(plan => (
-              <article className={`landing-plan-card${plan.featured ? ' landing-plan-featured' : ''}`} key={plan.name}>
-                {plan.featured && <span className="landing-plan-badge">Mais escolhido</span>}
+              <article className={`landing-plan-card`} key={plan.name}>
                 <h3>{plan.name}</h3>
                 <p className="landing-plan-description">{plan.description}</p>
                 <p className="landing-plan-price">{plan.priceLabel}<span>/mês</span></p>
                 <ul>
                   {plan.features.map(feature => (
-                    <li className={feature.includes('bloqueadas') ? 'landing-plan-locked' : ''} key={feature}>
-                      <i className={`fa-solid ${feature.includes('bloqueadas') ? 'fa-lock' : 'fa-check'}`} aria-hidden="true"></i>{feature}
+                    <li className={''} key={feature}>
+                      <i className={``} aria-hidden="true"></i>{feature}
                     </li>
                   ))}
                 </ul>
-                <button type="button" className={plan.featured ? 'btn-dorfic landing-plan-cta' : 'btn-dorfic-secondary landing-plan-cta'} onClick={() => onChoosePlan(plan.id)}>
+                <button type="button" className={'btn-dorfic-secondary landing-plan-cta'} onClick={() => onChoosePlan(plan.id)}>
                   Escolher {plan.name}
                 </button>
               </article>
             ))}
+
           </div>
           <p className="landing-pricing-note">Assinaturas mensais. Consulte as condições antes de contratar.</p>
         </section>
