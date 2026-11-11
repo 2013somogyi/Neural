@@ -1,5 +1,6 @@
-/* HERO: ocupa a largura toda, fundo claro com grade */
-/* HERO: sai do container pai e vai de ponta a ponta da tela */
+/* =========================================================
+   HERO: ocupa a largura toda, fundo claro com grade
+   ========================================================= */
 .landi-page-topo {
   position: relative;
   width: 100%;
@@ -14,24 +15,34 @@
     linear-gradient(to bottom, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
   background-size: 100% 100%, 36px 36px, 36px 36px;
   overflow: hidden;
+  border: 1px solid;
+  border-color: #f0c5a9;
 }
 
 .landi-hero-inner {
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: clamp(3rem, 6vw, 5rem) 1.5rem;
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 1.5rem);
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
   align-items: center;
   gap: clamp(2rem, 5vw, 4rem);
 }
 
-.landi-page-topo-content { position: relative; z-index: 2; }
+.landi-page-topo-content {
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
 
-.text-page-topo { display: flex; flex-direction: column; }
+.text-page-topo {
+  display: flex;
+  flex-direction: column;
+}
 
-.text-simples-topo p {
+.text-simples-topo {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
@@ -47,17 +58,18 @@
   max-width: 600px;
   margin: 0;
   color: #1e293b;
-  font-size: clamp(2.2rem, 4.2vw, 3.6rem);
+  font-size: clamp(2rem, 4.2vw, 3.6rem);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.035em;
+  overflow-wrap: break-word;
 }
 
 .text-descricao-topo {
   max-width: 520px;
   margin: 1.25rem 0 0;
   color: #475569;
-  font-size: 1.05rem;
+  font-size: clamp(0.95rem, 1.6vw, 1.05rem);
   line-height: 1.7;
 }
 
@@ -69,7 +81,6 @@
   margin-top: 2rem;
 }
 
-
 .landi-page-hint {
   display: flex;
   align-items: center;
@@ -79,19 +90,21 @@
   font-size: 0.85rem;
 }
 
-/* ORBITAS */
+/* ÓRBITAS (círculos decorativos atrás dos cards) */
 .bolinhas-fundo {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* centraliza dentro de .recursos-grid */
   z-index: -1;
   border: 1px solid rgba(255, 107, 0, 0.18);
   border-radius: 50%;
+  pointer-events: none;
 }
 .bolinha1 { width: 95%; aspect-ratio: 1; }
 .bolinha2 { width: 70%; aspect-ratio: 1; }
 
-
-
-/* LADO DIREITO */
+/* LADO DIREITO DO HERO */
 .recursos-grid {
   position: relative;
   display: flex;
@@ -102,39 +115,43 @@
 }
 
 .recursos-nuvem {
+  --desloc: 0px;                      /* deslocamento base do efeito "escada" */
   display: grid;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* minmax(0) evita estourar a tela */
   gap: 1.25rem;
+  width: 100%;
   max-width: 360px;
   margin: 0 auto;
+  padding-bottom: 1.5rem;             /* espaço para os cards que descem */
 }
 
-/* grid de recursos */
 .recursos-titulo {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: .8rem;
+  gap: 0.8rem;
   min-height: 150px;
   padding: 1.25rem 1rem;
   border-radius: 1rem;
-  background: rgba(255,255,255,.92);
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid #f1e4dc;
-  box-shadow: 0 12px 30px rgba(15,23,42,.08);
-  transition: .2s ease;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  transform: translateY(var(--desloc));
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
-.recursos-titulo:nth-child(even) {
-  transform: translateY(24px);
+
+.recursos-titulo:nth-child(odd)  { --desloc: 0rem; }
+.recursos-titulo:nth-child(even) { --desloc: 1.5rem; }
+
+.recursos-titulo:hover {
+  transform: translateY(calc(var(--desloc) - 0.4rem));
+  border-color: #ff6b00;
 }
-.recursos-titulo:nth-child(odd) {
-  transform: translateY(1.1rem);
-}
-.recursos-titulo:nth-child(even):hover {
-  transform: translateY(21px); border-color: #ff6b00;
-}
-.recursos-titulo:nth-child(odd):hover {
-  transform: translateY(11px); border-color: #ff6b00;
+
+.recursos-titulo strong {             /* antes era "strong" global */
+  font-size: 0.85rem;
+  text-align: center;
 }
 
 .recursos-fundo-icon {
@@ -147,14 +164,6 @@
   color: #ea580c;
 }
 
-strong{
-  font-size: 0.85rem;
-  text-align: center;
-
-}
-
-
-
 .note-status-dot {
   display: grid;
   place-items: center;
@@ -166,17 +175,9 @@ strong{
   flex-shrink: 0;
 }
 
-@media (max-width: 868px) {
-  .landi-hero-inner {
-    grid-template-columns: 1fr;
-    text-align: center;
-  }
-  .text-simples-topo p,
-  .landi-page-actions,
-  .landi-page-hint { justify-content: center; }
-  .text-page-topo h1,
-  .nuvem-recursos {  }
-}
+/* =========================================================
+   PÁGINA / SEÇÕES
+   ========================================================= */
 .inicioPai {
   display: flex;
   flex-direction: column;
@@ -184,8 +185,7 @@ strong{
   overflow-x: clip;
 }
 
-/* ÁREA DE APRESENTAÇÃO */
-.inicioSection {
+.planos-section {
   scroll-margin-top: 90px; /* o título não fica escondido atrás do header fixo */
   max-width: 900px;
   margin: 40px auto;
@@ -194,7 +194,7 @@ strong{
 }
 
 .inicioTitulo {
-  font-size: 32px;
+  font-size: clamp(1.6rem, 4vw, 2rem);
   font-weight: 800;
   color: #1e293b;
   margin-bottom: 10px;
@@ -202,7 +202,7 @@ strong{
 
 .inicioSubtitulo {
   color: #64748b;
-  font-size: 16px;
+  font-size: 1rem;
   margin-bottom: 40px;
 }
 
@@ -213,50 +213,61 @@ strong{
   flex-wrap: wrap;
 }
 
-/* CARDS DOS PLANOS */
+/* =========================================================
+   CARDS DOS PLANOS
+   ========================================================= */
 .plano-card {
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1 1 280px;                    /* cresce/encolhe e quebra linha sozinho */
+  max-width: 360px;
+  box-sizing: border-box;
   padding: 1.7rem;
-  border: 1px solid;
+  border: 1px solid #f0c5a9;
   border-radius: 1.2rem;
-  background: var(--surface);
-  
+  background: #fff;
+  text-align: left;
 }
+
 .plano-card:hover {
   border-color: #ff6b00;
   box-shadow: 0 12px 30px -5px rgba(255, 107, 0, 0.25);
 }
 
-.plano-notas{
-  margin: 1.3rem 0 0;
-  color: #94a3b8;
-  font-size: 0.76rem;
-  text-align: center;
+.plano-card h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.25rem;
+  font-weight: 900;
 }
-/* ================================ */
-/* textos de cards de planos */
 
-.plano-card h3 { margin: 0; color: var(--text-primary); font-size: 1.25rem; font-weight: 900; }
-.plano-card ul { display: grid; gap: 0.8rem; margin: 0 0 1.5rem; padding: 1rem 0 0; border-top: 1px solid #f0c5a9
-  ; list-style: none; }
+.plano-card ul {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem 0 0;
+  border-top: 1px solid #f0c5a9;
+  list-style: none;
+}
 
-.plano-card li { display: flex; align-items: flex-start; gap: 0.55rem; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.5; }
+.plano-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  color: #475569;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
 
-.plano-card { border-color: #f0c5a9; background: #fff; }
-.plano-card h3 { color: #1e293b; }
-.plano-card ul { border-color: #f0c5a9;}
-
-
-.plano-card-descricao{
+.plano-card-descricao {
   min-height: 2.8rem;
   margin: 0.5rem 0 1rem;
   color: #64748b;
   font-size: 0.83rem;
 }
 
-.plano-card-preco{
+.plano-card-preco {
   margin: 0;
   color: #b54200;
   font-size: 1.3rem;
@@ -265,8 +276,15 @@ strong{
 }
 .plano-card-preco span { color: #64748b; }
 
-/* botoes do plano */
-.botao-dorfic-2{
+.plano-notas {
+  margin: 1.3rem 0 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+/* botões do plano */
+.botao-dorfic-2 {
   background: #fff0e6;
   color: #d94100;
   border: 1px solid #ffc299;
@@ -276,17 +294,18 @@ strong{
   cursor: pointer;
 }
 
-.botao-dorfic-2:hover{
-  background-color: #FFE2D1;
+.botao-dorfic-2:hover {
+  background-color: #ffe2d1;
   border-color: #f0a16c;
 }
 
-.botao-dorfic-animacao{
-    width: 100%;
-    min-height: 2.9rem;
-    margin-top: auto;
+.botao-dorfic-animacao {
+  width: 100%;
+  min-height: 2.9rem;
+  margin-top: auto;
 }
 
+/* Estilos antigos (nomes em camelCase). Mantidos caso o HTML ainda use. */
 .planoTag {
   display: inline-block;
   background-color: #ffedd5;
@@ -297,7 +316,8 @@ strong{
   border-radius: 20px;
   margin-bottom: 15px;
 }
-.planoCard.destaque .planoTag {
+.planoCard.destaque .planoTag,
+.plano-card.destaque .planoTag {
   background-color: #ff6b00;
   color: #ffffff;
 }
@@ -339,126 +359,241 @@ strong{
   border: none;
 }
 
-.recursos-texto{
+/* =========================================================
+   SEÇÃO DE RECURSOS
+   ========================================================= */
+.recursos-section {
+  border-color: #f0c5a9;
+  background: rgba(255, 255, 255, 0.96);
+  padding: clamp(3rem, 8vw, 6.5rem) max(1rem, calc((100% - 1180px) / 2));
+  border: 1px solid;
+  border-color: #f0c5a9;
+}
+
+.recursos-texto {
   max-width: 700px;
-  margin: 0 auto 2.7rem;
+  margin: 0 auto 2rem;
   text-align: center;
-  margin-bottom: 2rem;
 }
 
 .recursos-texto .texto-chamativo {
   justify-content: center;
 }
 
-.recursos-texto > p:last-child { max-width: 570px; margin: 0.9rem auto 0; color: var(--text-secondary); font-size: 0.98rem; line-height: 1.7; }
+.recursos-texto > p:last-child {
+  max-width: 570px;
+  margin: 0.9rem auto 0;
+  color: #64748b;                      /* antes #94a3b8 (contraste baixo) */
+  font-size: 0.98rem;
+  line-height: 1.7;
+}
 
 .texto-chamativo {
   display: flex;
   align-items: center;
   gap: 0.55rem;
   margin: 0 0 1rem;
-  color: var(--accent-text);
+  color: #b54200;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: #b54200;
 }
 
-.recursos-section{
-  border-color: #f0c5a9; 
-  background: rgba(255, 255, 255, 0.96);
-  padding-right: 1rem;
-  padding-left: 1rem; 
-  padding: clamp(4rem, 8vw, 6.5rem) max(1rem, calc((100% - 1180px) / 2));
-  padding: 3.8rem 1rem;
-}
-.recursos-texto > p:last-child { 
-  color: #94a3b8;
-  max-width: 570px;
-  margin: 0.9rem auto 0;
-  font-size: 0.98rem;
-  line-height: 1.7;
-}
-
-.recursos-cards{
+.recursos-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;  
+  gap: 1rem;
 }
 
-@media (max-width: 640px) {
-  .plano-card { padding: 1.4rem; }
-
-}
-
-@media (max-width: 900px) {
-  .recursos-cards{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.recursos-cards-grid{
+.recursos-cards-grid {
   position: relative;
   min-height: 220px;
   padding: 1.5rem;
-  border: 1px solid;
+  border: 1px solid #f0c5a9;
   border-radius: 1.15rem;
-  background: var(--app-bg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: #f7f9fc;
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+              border-color 0.2s ease, background 0.2s ease;
 }
 
 .recursos-cards-grid:hover {
   transform: translateY(-4px);
   border-color: #efa875;
-  box-shadow: 0 15px 32px rgba(106, 52, 23, 0.08);
-
-}
-
-.recursos-cards-grid h3 {
-  margin: 1.2rem 0 0.5rem;
-  color: var(--text-primary);
-  font-size: 1.05rem;
-  font-weight: 800; 
-  color: #1e293b;
-}
-
-.recursos-cards-grid p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.83rem;
-  line-height: 1.65;
-  color: #64748b;
-}
-
-.recursos-cards-grid {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.045); 
-}
-
-.recursos-cards-grid:hover {
-  border-color: rgba(249, 115, 22, 0.55);
-  background: rgba(255, 255, 255, 0.075);
-  box-shadow: none; 
-}
-
-.recursos-cards-grid { 
-  border-color: #f0c5a9;
-  background: #f7f9fc;
-}
-
-.recursos-cards-grid:hover {
-  border-color: #efa875;
   background: #fff;
   box-shadow: 0 15px 32px rgba(65, 46, 36, 0.08);
 }
 
-.recursos-numero{
+.recursos-cards-grid h3 {
+  margin: 1.2rem 0 0.5rem;
+  color: #1e293b;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.recursos-cards-grid p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.83rem;
+  line-height: 1.65;
+}
+
+.recursos-numero {
   position: absolute;
-  top: 1.5rem; right: 1.5rem;
+  top: 1.5rem;
+  right: 1.5rem;
   color: #bc8161;
   font-size: 0.68rem;
   font-weight: 800;
-  
 }
 
+/* =========================================================
+   CHAMADA FINAL
+   ========================================================= */
+.comecar-agr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: clamp(2.2rem, 5vw, 4rem) max(1rem, calc((100% - 1180px) / 2));
+  background: linear-gradient(120deg, #fff2e8, #fffaf7 65%, #ffe6d4);
+  border-top: 1px solid  #f0c5a9;
+}
+
+.comecar-agr > div {
+  max-width: 650px;
+}
+
+.comecar-agr h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  line-height: 1.2;
+}
+
+.comecar-agr > div > p:last-child {
+  margin: 0.6rem 0 0;
+  color: #6b5b51;
+  font-size: 0.9rem;
+}
+
+/* =========================================================
+   RESPONSIVO (sempre no final, do maior para o menor)
+   ========================================================= */
+
+/* Tablet */
+@media (max-width: 900px) {
+  /* hero em uma coluna, tudo centralizado */
+  .landi-page-topo {
+    min-height: 0;
+  }
+
+  .landi-hero-inner {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .text-page-topo {
+    align-items: center;
+  }
+
+  .text-page-topo h1,
+  .text-descricao-topo {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .text-simples-topo p,
+  .landi-page-actions,
+  .landi-page-hint {
+    justify-content: center;
+  }
+
+  .recursos-grid {
+    min-height: 380px;
+  }
+
+  /* recursos: 4 -> 2 colunas */
+  .recursos-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Celular grande */
+@media (max-width: 768px) {
+  .comecar-agr {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+
+  .inicioPlanos {
+    gap: 20px;
+  }
+}
+
+/* Celular */
+@media (max-width: 640px) {
+  .plano-card {
+    flex-basis: 100%;
+    max-width: 420px;
+    padding: 1.4rem;
+  }
+
+  .plano-card-descricao {
+    min-height: 0;                    /* sem altura fixa quando empilhado */
+  }
+
+  .landi-page-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .planos-section {
+    margin: 30px auto;
+    padding: 0 16px;
+    border: 1px solid;
+    border-color: #f0c5a9;
+  }
+}
+
+@media (max-width: 560px) {
+  /* recursos: 2 -> 1 coluna */
+  .recursos-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .recursos-cards-grid {
+    min-height: 0;
+    padding: 1.25rem;
+  }
+}
+
+/* Celulares pequenos */
+@media (max-width: 420px) {
+  .recursos-grid {
+    min-height: 340px;
+  }
+
+  .recursos-nuvem {
+    gap: 0.9rem;
+  }
+
+  .recursos-titulo {
+    min-height: 130px;
+    padding: 1rem 0.6rem;
+  }
+
+  .recursos-titulo:nth-child(even) {
+    --desloc: 1rem;
+  }
+
+  .recursos-fundo-icon {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+}

@@ -1,0 +1,88 @@
+/* =========================================================
+   FOOTER
+   ========================================================= */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1.5rem clamp(1rem, 5vw, 5rem);
+  box-sizing: border-box;
+  background: #ffffff;
+  border-top: 1px solid #ffe2d1;   /* laranja bem suave */
+}
+
+.footer p,
+.footer > span {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* MARCA / TEXTO DA LOGO */
+.footer-escrita {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.65rem;
+  color: #a33a00;
+  font-size: 1rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.footer-escrita:hover,
+.footer-escrita:focus-visible {
+  color: #ee5100;
+}
+
+/* QUADRADO DA LOGO */
+.footer-logo {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;                  /* nunca deforma */
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.65rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 50%, #ff5500 100%);
+  font-weight: 900;
+  box-shadow: 0 5px 12px rgba(238, 81, 0, 0.24);
+}
+
+/* =========================================================
+   RESPONSIVO
+   ========================================================= */
+
+/* Tablet */
+@media (max-width: 900px) {
+  .footer {
+    gap: 0.8rem 1.5rem;
+  }
+}
+
+/* Celular: empilha e centraliza */
+@media (max-width: 640px) {
+  .footer {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem;
+  }
+}
+
+/* Celulares pequenos */
+@media (max-width: 360px) {
+  .footer-escrita {
+    font-size: 0.95rem;
+  }
+
+  .footer p,
+  .footer > span {
+    font-size: 0.7rem;
+  }
+}

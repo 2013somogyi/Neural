@@ -104,7 +104,7 @@ function Inicio({ aoNavegar }) {
                 </section>
 
                 {/* secao dos PLANOS */}
-                <section className="inicioSection" id="planos">
+                <section className="planos-section" id="planos">
                     <h1 className="inicioTitulo">
                         Escolha o plano ideal para a sua empresa
                     </h1>
@@ -134,6 +134,15 @@ function Inicio({ aoNavegar }) {
                         ))}
                     </div>
                     <p className="plano-notas">Assinaturas mensais. Consulte as condições antes de contratar.</p>
+                </section>
+                <section className="comecar-agr" id="contato">
+                    <div>
+                        <p className="text-simples-topo">Pronto para Organizar sua Empresa?</p>
+                        <h2>Comece hoje a cuidar melhor de cada serviço.</h2>
+                        <p>escolha o plano ideal para a sua empresa e comece a usar a plataforma.</p>
+                    </div>
+                    
+                    <button className="btnLogin btnGrande" onClick={() => aoNavegar('cadastro')}>Começar agora</button>
                 </section>
 
             </div>

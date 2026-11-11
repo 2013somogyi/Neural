@@ -7,16 +7,20 @@
 .inicioHeader {
   background-color: #ffffff;
   border-bottom: 2px solid #ffe2d1;
+  border-color: 1px solid #f0c5a9;
 }
 
 .inicioHeaderConteudo {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;                 /* permite quebrar linha em telas pequenas */
+  gap: 12px 16px;
   width: 100%;
-  max-width: 1180px;   /* mesmo valor do hero */
-  margin: 0 auto;      /* centraliza */
-  padding: 15px 1.5rem; /* mesmo padding lateral do hero */
+  max-width: 1180px;               /* mesmo valor do hero */
+  margin: 0 auto;                  /* centraliza */
+  padding: 15px clamp(1rem, 4vw, 1.5rem); /* padding lateral fluido */
+  box-sizing: border-box;
 }
 
 /* LOGO NEURAL */
@@ -24,9 +28,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .Logo {
+  flex-shrink: 0;                  /* o quadrado da logo nunca encolhe */
   width: 42px;
   height: 42px;
   background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
@@ -40,22 +46,119 @@
   box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
 }
 
+.Logo:hover {
+  background: linear-gradient(20deg, #ee5100 0%, #d94100 100%);
+  box-shadow: 0 4px 10px rgba(255, 107, 0, 0.5);
+  cursor: pointer;
+}
+
 .inicioAreaLogo span {
-  font-size: 24px;
+  font-size: clamp(1.25rem, 4vw, 1.5rem); /* 20px a 24px */
   font-weight: 900;
   color: #ff6b00;
+  align-items: center;
+}
+
+.inicioAreaLogo span:hover {
+  color: #ee5100;
+  cursor: pointer;
 }
 
 /* BOTÕES DO CABEÇALHO */
 .inicioBotoesTopo {
   display: flex;
+  align-items: center;
   gap: 10px;
 }
 
-.btnLogin:hover {
-  background-color: #ffe2d1;
+.inicioBotoesMeio {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.7rem, 2vw, 1.8rem);
+}
+
+
+.inicioBotoesMeio a {
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inicioBotoesMeio a:hover {
+  color: #b54200;
+}
+
+.btnLogin:hover :nth-child(1) {
+  transform: translateY(1%);
+  background: linear-gradient(180deg, #ffe2d1 0%, #ffd5b3 100%);
 }
 
 .btnSignup:hover {
   background: linear-gradient(180deg, #ee5100 0%, #d94100 100%);
+}
+
+/* ========== RESPONSIVO ========== */
+
+/* Tablet e abaixo */
+@media (max-width: 900px) {
+  .inicioBotoesMeio a {
+    font-size: 0.85rem;
+  }
+}
+
+/* Celular grande / tablet pequeno:
+   links do meio vão para uma segunda linha, centralizados e roláveis */
+@media (max-width: 768px) {
+  .inicioHeaderConteudo {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .inicioBotoesMeio {
+    order: 3;                      /* vai para baixo da logo e dos botões */
+    flex-basis: 100%;
+    justify-content: center;
+    overflow-x: auto;              /* rola na horizontal se não couber */
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-top: 1px solid #f0c5a9;
+  }
+
+  .inicioBotoesMeio::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Celular */
+@media (max-width: 480px) {
+  .Logo {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+
+  .inicioAreaLogo {
+    gap: 8px;
+  }
+
+  .inicioBotoesTopo {
+    gap: 6px;
+  }
+
+  .inicioBotoesMeio {
+    justify-content: flex-start;   /* começa da esquerda para a rolagem funcionar bem */
+    gap: 1rem;
+    border-top: 1px solid #f0c5a9;
+  }
+}
+
+/* Celulares muito pequenos */
+@media (max-width: 360px) {
+  .inicioAreaLogo span {
+    font-size: 1.1rem;
+  }
 }
