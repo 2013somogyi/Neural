@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import './cadastro.css'
-import HeaderSite from '../../components/header/headerSite.jsx'
 
 function Cadastro({ aoNavegar }) {
     // Estado para controlar se o menu lateral está aberto ou fechado (retrátil)
@@ -23,32 +22,12 @@ function Cadastro({ aoNavegar }) {
 
     return (
         <div className="painelPai">
-            <HeaderSite
-                aoNavegar={aoNavegar}
-                menuAberto={menuAberto}
-                setMenuAberto={setMenuAberto}
-            />
-
+            
             {/* 2. CORPO: SIDEBAR RETRÁTIL + CONTEÚDO */}
             <div className="painelCorpo">
 
                 {/* Fundo escurecido suave (Backdrop): quando você clica fora da barra, ela retrai! */}
-                {menuAberto && (
-                    <div 
-                        className="sidebarBackdrop" 
-                        onClick={() => setMenuAberto(false)}
-                    />
-                )}
-
-                {/* Menu Lateral Esquerdo Retrátil */}
-                <aside className={`painelSidebar ${menuAberto ? 'aberto' : ''}`}>
-                    <button className="sidebarItem">👥 Cliente</button>
-                    <button className="sidebarItem ativo">🛠 Ordem de Serviço</button>
-                    <button className="sidebarItem">📦 Estoque & Peças</button>
-                    <button className="sidebarItem">🚚 Fornecedor</button>
-                    <button className="sidebarItem">📈 Relatório</button>
-                    <button className="sidebarItem">👤 Técnicos / Equipe</button>
-                </aside>
+                
 
                 {/* Conteúdo Principal com a Tabela */}
                 <main className="painelConteudo">

@@ -13,6 +13,23 @@ function HeaderSite({ aoNavegar, menuAberto, setMenuAberto }) {
                         ☰
                     </button>
 
+                    {menuAberto && (
+                    <div 
+                        className="sidebarBackdrop" 
+                        onClick={() => setMenuAberto(false)}
+                    />
+                )}
+
+                {/* Menu Lateral Esquerdo Retrátil */}
+                <aside className={`painelSidebar ${menuAberto ? 'aberto' : ''}`}>
+                    <button className="sidebarItem">👥 Cliente</button>
+                    <button className="sidebarItem ativo">🛠 Ordem de Serviço</button>
+                    <button className="sidebarItem">📦 Estoque & Peças</button>
+                    <button className="sidebarItem">🚚 Fornecedor</button>
+                    <button className="sidebarItem">📈 Relatório</button>
+                    <button className="sidebarItem">👤 Técnicos / Equipe</button>
+                </aside>
+
                     <div className="logoPainel">N</div>
                     <div className="infoEmpresa">
                         <div className="nomeEmpresa">Empresa: Neural Tech Soluções LTDA • Plano Prime</div>
@@ -25,7 +42,7 @@ function HeaderSite({ aoNavegar, menuAberto, setMenuAberto }) {
                         ⌂ INÍCIO
                     </button>
 
-                    <span className="headerLinks">⚙ Configuração | ❓ Suporte</span>
+                    <span className="headerLinks"><a href="">⚙ Configuração</a> | <a href="http://">❓ Suporte</a></span>
                     <span className="logoTextoNeural">N Neural</span>
 
                     <button className="btnSair" onClick={() => aoNavegar('inicio')}>

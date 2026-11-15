@@ -1,8 +1,8 @@
 import './inicio.css';
-import { recursos } from '../../utils/recursos';
-import { subscriptionPlans } from '../../utils/subscriptionPlans';
+import { recursos } from '../../../utils/recursos';
+import { subscriptionPlans } from '../../../utils/subscriptionPlans';
 
-function Inicio({ aoNavegar }) {
+function Inicio({ aoNavegar, onChoosePlan }) {
     return (
         <div className="inicioPai">
             <div className="inicioContainer">
@@ -32,7 +32,7 @@ function Inicio({ aoNavegar }) {
 
                                 <button
                                     className="btnLogin btnGrande"
-                                    onClick={() => aoNavegar('cadastro')}
+                                    onClick={() => aoNavegar('planos')}
                                 >
                                     Criar minha conta
                                 </button>
@@ -127,7 +127,13 @@ function Inicio({ aoNavegar }) {
                                     </li>
                                 ))}
                                 </ul>
-                                <button type="button" className={'botao-dorfic-2 botao-dorfic-animacao'} onClick={() =>    onChoosePlan(plan.id)}>
+                                <button
+                                    type="button"
+                                    className="botao-dorfic-2 botao-dorfic-animacao"
+                                    onClick={() => onChoosePlan
+                                        ? onChoosePlan(plan.id)
+                                        : aoNavegar('planos')}
+                                >
                                 Escolher {plan.name}
                                 </button>
                             </article>
@@ -142,7 +148,7 @@ function Inicio({ aoNavegar }) {
                         <p>escolha o plano ideal para a sua empresa e comece a usar a plataforma.</p>
                     </div>
                     
-                    <button className="btnLogin btnGrande" onClick={() => aoNavegar('cadastro')}>Começar agora</button>
+                    <button className="btnLogin btnGrande" onClick={() => aoNavegar('planos')}>Começar agora</button>
                 </section>
 
             </div>

@@ -1,0 +1,493 @@
+/* Container de toda a página do sistema */
+.painelPai {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 41px);
+  background-color: #f8fafc;
+  position: relative;
+}
+
+/* 1. CABEÇALHO DO SISTEMA */
+.painelHeader {
+  background-color: #ffffff;
+  border-bottom: 2px solid #ffe2d1;
+  padding: 10px 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+
+
+/* Botão Hamburguer no canto superior esquerdo */
+
+
+
+
+
+
+
+
+
+
+
+/* 2. CORPO (SIDEBAR RETRÁTIL + CONTEÚDO) */
+.painelCorpo {
+  display: flex;
+  flex: 1;
+  position: relative;
+}
+
+/* 3. ÁREA DE CONTEÚDO (DIREITA) */
+.painelConteudo {
+  flex: 1;
+  padding: 25px 30px;
+  width: 100%;
+}
+
+/* Barra superior da tabela: título e filtros */
+.barraOS {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.tituloArea {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.tituloOS {
+  font-size: 20px;
+  font-weight: 900;
+  color: #ff6b00;
+}
+
+.btnNovaOS {
+  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(238, 81, 0, 0.25);
+}
+.btnNovaOS:hover {
+  background: linear-gradient(180deg, #ee5100 0%, #d94100 100%);
+}
+
+.filtroArea {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filtroArea select,
+.filtroArea input {
+  padding: 8px 12px;
+  border: 2px solid #ffd8bf;
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+  background-color: #ffffff;
+}
+
+.filtroArea input {
+  width: 220px;
+}
+
+.btnPesquisar {
+  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.btnPesquisar:hover {
+  background: linear-gradient(180deg, #ee5100 0%, #d94100 100%);
+}
+
+/* 4. A TABELA DE ORDEM DE SERVIÇO */
+.tabelaCard {
+  background-color: #ffffff;
+  border: 2px solid #ffe2d1;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.05);
+  overflow-x: auto;
+}
+
+.tabelaOS {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.tabelaOS th {
+  background-color: #fff7ed;
+  color: #9a3412;
+  font-weight: 900;
+  padding: 14px 16px;
+  border-bottom: 2px solid #ffedd5;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.tabelaOS td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #fff0e6;
+  color: #334155;
+  font-weight: 600;
+}
+
+.tabelaOS tr:hover {
+  background-color: #fffbf8;
+}
+
+/* Badges de Status (Pílulas coloridas) */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.badge.concluida {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.badge.execucao {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge.cancelada {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge.aguardando {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.badge.aberta {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+/* Botão da tabela */
+.btnAcao {
+  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.btnAcao:hover {
+  background: linear-gradient(180deg, #ee5100 0%, #d94100 100%);
+}
+
+/* =============================================== */
+/* +++++++++++ REGIAO DO  CSS plano.jsx +++++++++++*/
+/* =============================================== */
+
+.planos-page {
+  box-sizing: border-box;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 5rem) clamp(1rem, 4vw, 2rem);
+}
+
+.planos-page .planos-section {
+  max-width: none;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+}
+
+.planos-page .inicioTitulo {
+  max-width: 24ch;
+  margin: 0 auto 0.75rem;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  text-wrap: balance;
+}
+
+.planos-page .inicioSubtitulo {
+  max-width: 62ch;
+  margin: 0 auto clamp(2rem, 5vw, 3rem);
+  line-height: 1.6;
+}
+
+.planos-page .inicioPlanos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 360px));
+  justify-content: center;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.planos-page .plano-card {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .planos-page {
+    padding-block: 1.5rem;
+  }
+
+  .planos-page .inicioPlanos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planos-page .plano-card {
+    padding: 1.25rem;
+  }
+}
+
+/* =============================================== */
+/* +++++++++ REGIAO DO CSS pagamento.jsx +++++++++ */
+/* =============================================== */
+
+.pagamento {
+  --app-bg: #f7f9fc;
+  --surface: #fff;
+  --surface-muted: #fff5ef;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --border-subtle: #f0c5a9;
+  --accent-text: #a33a00;
+
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.5rem, 5vw, 3.5rem) 1rem;
+  color-scheme: light;
+  color: var(--text-primary);
+  background: var(--app-bg);
+}
+
+.pagamento-painel {
+  width: min(100%, 510px);
+  padding: clamp(1.3rem, 4vw, 2rem);
+  border: 2px solid var(--border-subtle);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.08);
+}
+
+.pagamento-topo {
+  text-align: center;
+}
+
+.pagamento-topo h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.pagamento-topo > p:last-child {
+  margin: 0.65rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.pagamento-icone {
+  display: grid;
+  width: 3.2rem;
+  height: 3.2rem;
+  place-items: center;
+  margin: 0 auto 1rem;
+  border-radius: 1rem;
+  color: var(--accent-text);
+  background: var(--surface-muted);
+  font-size: 1.25rem;
+}
+
+.pagamento .etapa {
+  margin: 0 0 0.55rem;
+  color: var(--accent-text);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.pagamento .plano-resumo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.9rem;
+  background: var(--app-bg);
+}
+
+.pagamento .plano-resumo > div {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.pagamento .plano-resumo span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.pagamento .plano-resumo strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.pagamento .plano-preco {
+  text-align: right;
+}
+
+.pagamento .plano-preco strong {
+  color: var(--accent-text);
+  font-size: 1.15rem;
+}
+
+.pagamento .formas-pag {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pagamento .formas-pag legend {
+  margin-bottom: 0.6rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.pagamento .forma-pag {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.8rem;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.pagamento .forma-pag.selecionada {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+}
+
+.pagamento .forma-pag input {
+  accent-color: #ea580c;
+}
+
+.pagamento .forma-pag > i {
+  width: 1.25rem;
+  text-align: center;
+}
+
+.pagamento .forma-pag > span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pagamento .forma-pag strong {
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+
+.pagamento .forma-pag small {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}
+
+.pagamento .aviso-pag {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border-radius: 0.7rem;
+  color: var(--text-secondary);
+  background: rgba(249, 115, 22, 0.08);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.pagamento .aviso-pag i {
+  margin-top: 0.1rem;
+  color: var(--accent-text);
+}
+
+.pagamento .botao-principal {
+  display: flex;
+  width: 100%;
+  min-height: 2.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(238, 81, 0, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.pagamento .botao-principal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(238, 81, 0, 0.35);
+}
+
+.pagamento .botao-principal:focus-visible,
+.pagamento .voltar-planos:focus-visible {
+  outline: 2px solid #b54200;
+  outline-offset: 3px;
+}
+
+.pagamento .voltar-planos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 1rem auto 0;
+  padding: 0.4rem;
+  border: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pagamento .voltar-planos:hover {
+  color: var(--accent-text);
+}

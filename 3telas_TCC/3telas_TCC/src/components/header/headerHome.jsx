@@ -17,7 +17,7 @@ function Header({ aoNavegar }) {
                 </nav>
                 <div className="inicioBotoesTopo">
                     <button className="btnLogin" onClick={() => aoNavegar('login')}>Entrar</button>
-                    <button className="btnSignup" onClick={() => aoNavegar('cadastro')}>Cadastrar</button>
+                    <button className="btnSignup" onClick={() => aoNavegar('planos')}>Cadastrar</button>
                 </div>
             </div>
         </header>
