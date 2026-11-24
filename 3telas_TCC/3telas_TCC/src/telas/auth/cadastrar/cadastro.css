@@ -267,14 +267,23 @@
 /* +++++++++ REGIAO DO CSS pagamento.jsx +++++++++ */
 /* =============================================== */
 
-.pagamento {
-  --app-bg: #f7f9fc;
+.pagamento,
+.cadastro-empresa,
+.cadastro-adm {
   --surface: #fff;
-  --surface-muted: #fff5ef;
   --text-primary: #1e293b;
-  --text-secondary: #475569;
   --border-subtle: #f0c5a9;
   --accent-text: #a33a00;
+  --action-gradient: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
+  --action-shadow: 0 4px 12px rgba(238, 81, 0, 0.25);
+  --action-shadow-hover: 0 6px 16px rgba(238, 81, 0, 0.35);
+  --focus-color: #b54200;
+}
+
+.pagamento {
+  --app-bg: #f7f9fc;
+  --surface-muted: #fff5ef;
+  --text-secondary: #475569;
 
   display: flex;
   flex: 1 0 auto;
@@ -286,13 +295,18 @@
   background: var(--app-bg);
 }
 
-.pagamento-painel {
-  width: min(100%, 510px);
-  padding: clamp(1.3rem, 4vw, 2rem);
+.pagamento-painel,
+.cadastro-cartao,
+.adm-cartao {
   border: 2px solid var(--border-subtle);
   border-radius: 1.25rem;
   background: var(--surface);
   box-shadow: 0 10px 25px -5px rgba(255, 107, 0, 0.08);
+}
+
+.pagamento-painel {
+  width: min(100%, 510px);
+  padding: clamp(1.3rem, 4vw, 2rem);
 }
 
 .pagamento-topo {
@@ -454,22 +468,28 @@
   padding: 0.75rem 1rem;
   border: 0;
   border-radius: 0.75rem;
-  color: #fff;
-  background: linear-gradient(180deg, #ff7a00 0%, #ee5100 100%);
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(238, 81, 0, 0.25);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
 }
 
+.pagamento .botao-principal,
+.cadastro-empresa .botao-proximo {
+  color: #fff;
+  background: var(--action-gradient);
+  box-shadow: var(--action-shadow);
+}
+
 .pagamento .botao-principal:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(238, 81, 0, 0.35);
+  box-shadow: var(--action-shadow-hover);
 }
 
 .pagamento .botao-principal:focus-visible,
-.pagamento .voltar-planos:focus-visible {
-  outline: 2px solid #b54200;
+.pagamento .voltar-planos:focus-visible,
+.cadastro-empresa .botao-voltar:focus-visible,
+.cadastro-empresa .botao-proximo:focus-visible {
+  outline: 2px solid var(--focus-color);
   outline-offset: 3px;
 }
 
@@ -490,4 +510,344 @@
 
 .pagamento .voltar-planos:hover {
   color: var(--accent-text);
+}
+
+/* =============================================== */
+/* ++++++++ REGIAO DO CSS cadEmpresa.jsx +++++++++ */
+/* =============================================== */
+
+.cadastro-empresa {
+  --app-bg: #f1f5f9;
+
+  display: flex;
+  min-height: 100vh;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--text-primary);
+  background: var(--app-bg);
+  color-scheme: light;
+}
+
+.cadastro-cartao {
+  width: min(100%, 42rem);
+  padding: 2rem;
+}
+
+.cadastro-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ffedd5;
+}
+
+.cadastro-titulo {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.cadastro-subtitulo {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.cadastro-etapa {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  color: #c2410c;
+  background: #ffedd5;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cadastro-formulario {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.campo {
+  min-width: 0;
+}
+
+.campo-largo {
+  grid-column: 1 / -1;
+}
+
+.campo-rotulo,
+.adm-rotulo {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.campo-entrada,
+.adm-entrada {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border: 2px solid #ffd8bf;
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  background: var(--surface);
+  font: inherit;
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.campo-entrada:hover:not(:disabled),
+.adm-entrada:hover:not(:disabled) {
+  border-color: #ffb380;
+}
+
+.campo-entrada:focus,
+.adm-entrada:focus {
+  border-color: #ff6b00;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.15);
+}
+
+.campo-entrada[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.campo-erro {
+  margin: 0.35rem 0 0;
+  color: #b91c1c;
+  font-size: 0.75rem;
+}
+
+.endereco-linha {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.campo-uf {
+  flex: 1;
+}
+
+.campo-cep {
+  flex: 2;
+}
+
+.cep-carregando,
+.modelo-descricao {
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+.modelo-descricao {
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
+}
+
+.formulario-acoes {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.botao-voltar,
+.botao-proximo,
+.adm-botao-voltar,
+.adm-botao-cadastrar {
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.botao-voltar,
+.botao-proximo {
+  padding: 0.625rem 1.5rem;
+}
+
+.adm-botao-voltar,
+.adm-botao-cadastrar {
+  padding: 0.625rem 1rem;
+}
+
+.botao-voltar {
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-text);
+  background: #fff5ef;
+}
+
+.botao-voltar:hover,
+.adm-botao-voltar:hover {
+  background: #ffe2d1;
+}
+
+.cadastro-empresa .botao-proximo {
+  border: 0;
+}
+
+.cadastro-empresa .botao-proximo,
+.adm-botao-cadastrar {
+  border: 0;
+  color: #fff;
+  background: var(--action-gradient);
+  box-shadow: var(--action-shadow);
+}
+
+.cadastro-empresa .botao-proximo:hover,
+.adm-botao-cadastrar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--action-shadow-hover);
+}
+
+.adm-botao-cadastrar:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.cadastro-empresa .botao-voltar:focus-visible,
+.cadastro-empresa .botao-proximo:focus-visible,
+.adm-botao-voltar:focus-visible,
+.adm-botao-cadastrar:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .cadastro-empresa {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .cadastro-cartao {
+    padding: 1.25rem;
+  }
+
+  .cadastro-formulario {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cadastro-formulario .campo-largo {
+    grid-column: auto;
+  }
+
+  .formulario-acoes {
+    flex-direction: column-reverse;
+  }
+
+  .botao-voltar,
+  .botao-proximo {
+    width: 100%;
+  }
+}
+
+/* =============================================== */
+/* ++++++++++ REGIAO DO CSS cadAdm.jsx +++++++++++ */
+/* =============================================== */
+
+.cadastro-adm {
+  --app-bg: #f1f5f9;
+
+  display: flex;
+  min-height: 100vh;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--text-primary);
+  background: var(--app-bg);
+  color-scheme: light;
+}
+
+.adm-cartao {
+  width: min(100%, 28rem);
+  padding: 2rem;
+}
+
+.adm-cabecalho {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.adm-marca {
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.5rem;
+  border-radius: 0.75rem;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b00 0%, #ff8800 50%, #ff5500 100%);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.adm-titulo {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.adm-subtitulo {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.adm-formulario {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.adm-campo {
+  min-width: 0;
+}
+
+.adm-acoes {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.adm-botao-voltar {
+  width: 33.333%;
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-text);
+  background: #fff5ef;
+}
+
+.adm-botao-cadastrar {
+  width: 66.667%;
+}
+
+@media (max-width: 480px) {
+  .cadastro-adm {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .adm-cartao {
+    padding: 1.25rem;
+  }
+
+  .adm-acoes {
+    flex-direction: column-reverse;
+  }
+
+  .adm-botao-voltar,
+  .adm-botao-cadastrar {
+    width: 100%;
+  }
 }
